@@ -48,6 +48,7 @@ namespace ApiDocs.Validation.OData
         /// <summary>
         /// Indicates that the target of this property can be enumerated (e.g. GET /items)
         /// </summary>
+        [XmlIgnore]
         public bool Enumerable { get; set; }
 
         /// <summary>

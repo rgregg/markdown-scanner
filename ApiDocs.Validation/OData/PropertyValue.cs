@@ -35,13 +35,21 @@ namespace ApiDocs.Validation.OData
 
         [XmlElement("EnumMember", Namespace = ODataParser.EdmNamespace), DefaultValue(null)]
         public string EnumMember { get; set; }
-    }
 
-    public class BoolPropertyValue : PropertyValue
-    {
-
-        [XmlAttribute("Bool")]
+        [XmlAttribute("Bool"), DefaultValue(null)]
         public bool Bool { get; set; }
 
+        [XmlIgnore]
+        public bool BoolSpecified { get; set; }
+
+
+        public const string SupportedProperty = "Supported";
+        public const string ExpandableProperty = "Expandable";
+        public const string SearchableProperty = "Searchable";
+        public const string InsertableProperty = "Insertable";
+        public const string UpdatableProperty = "Updatable";
+        public const string DeletableProperty = "Deletable";
+        public const string CountableProperty = "Countable";
+        public const string FilterableProperty = "Filterable";
     }
 }

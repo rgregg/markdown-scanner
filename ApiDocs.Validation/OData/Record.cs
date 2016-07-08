@@ -30,7 +30,7 @@ namespace ApiDocs.Validation.OData
     [XmlRoot("Record", Namespace = ODataParser.EdmNamespace)]
     public class Record
     {
-        [XmlElement("PropertyValue", ElementName = ODataParser.EdmNamespace), DefaultValue(null)]
+        [XmlElement("PropertyValue", Namespace = ODataParser.EdmNamespace), DefaultValue(null)]
         public PropertyValue PropertyValue { get; set; }
     }
 }

@@ -44,7 +44,6 @@ namespace ApiDocs.Validation.OData
         [XmlElement("Annotation", Namespace = ODataParser.EdmNamespace)]
         public List<Annotation> Annotation { get; set; }
 
-
         /// <summary>
         /// Indicates that this property can be used in a $select query parameter
         /// </summary>

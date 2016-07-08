@@ -55,10 +55,26 @@ namespace ApiDocs.Validation.OData
 
         public const string DescriptionTerm = "Org.OData.Core.V1.Description";
         public const string LongDescriptionTerm = "Org.OData.Core.V1.LongDescription";
+        
+        public const string CountRestrictionsTerm = "Org.OData.Capabilities.V1.CountRestrictions";
+        public const string TopSupportedTerm = "Org.OData.Capabilities.V1.TopSupported";
+        public const string SkipSupportedTerm = "Org.OData.Capabilities.V1.SkipSupported";
+        public const string FilterRestrictionsTerm = "Org.OData.Capabilities.V1.FilterRestrictions";
+        public const string SortRestrictionsTerm = "Org.OData.Capabilities.V1.SortRestrictions";
         public const string ExpandRestrictionsTerm = "Org.OData.Capabilities.V1.ExpandRestrictions";
-        public const string SearchRestrictionsTerm = "Org.OData.Capabilities.V1.SearchRestrictions";
+        public const string InsertRestrictionsTerm = "Org.OData.Capabilities.V1.InsertRestrictions";
+        public const string UpdateRestrictionsTerm = "Org.OData.Capabilities.V1.UpdateRestrictions";
+        public const string DeleteRestrictionsTerm = "Org.OData.Capabilities.V1.DeleteRestrictions";
+        public const string SelectRestrictionsTerm = "Org.OData.Capabilities.V1.SelectRestrictions";
+
+
+        // Not in SDK generation
+        //public const string SearchRestrictionsTerm = "Org.OData.Capabilities.V1.SearchRestrictions";
         public const string ChangeTrackingTerm = "Org.OData.Capabilities.V1.ChangeTracking";
-        public const string NavigationRestrictionsTerm = "Org.OData.Capabilities.V1.NavigationRestrictions";
+        //public const string NavigationRestrictionsTerm = "Org.OData.Capabilities.V1.NavigationRestrictions";
+
+
+
 
     }
 }

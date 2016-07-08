@@ -33,7 +33,7 @@ namespace ApiDocs.Publishing.CSDL
     using System.Text;
     using System.Threading.Tasks;
     using ApiDocs.Validation.OData;
-
+    using System.Diagnostics;
     public class CsdlWriter : DocumentPublisher
     {
         private readonly string[] validNamespaces;
@@ -99,6 +99,7 @@ namespace ApiDocs.Publishing.CSDL
         {
             Dictionary<string, MethodCollection> uniqueRequestPaths = GetUniqueRequestPaths(baseUrlToRemove);
 
+
             foreach (var path in uniqueRequestPaths.Keys)
             {
                 var methodCollection = uniqueRequestPaths[path];
@@ -146,15 +147,20 @@ namespace ApiDocs.Publishing.CSDL
                 parentType.NavigationProperties.FirstOrDefault(np => np.Name == navigationProperty.Name);
             if (null != matchingProperty)
             {
-                // TODO: Append information from methods into this navigation property
-                StringBuilder sb = new StringBuilder();
-                const string seperator = ", ";
-                sb.AppendWithCondition(methods.GetAllowed, "GET", seperator);
-                sb.AppendWithCondition(methods.PostAllowed, "POST", seperator);
-                sb.AppendWithCondition(methods.PutAllowed, "PUT", seperator);
-                sb.AppendWithCondition(methods.DeleteAllowed, "DELETE", seperator);
+                // Add the InsertRestrctions annotation
+                AddAnnotationTermAndRecord(matchingProperty, Term.InsertRestrictionsTerm, PropertyValue.InsertableProperty, methods.PostAllowed);
 
-                Console.WriteLine("Collection '{0}' supports: ({1})", navigationProperty.QualifiedType + "/" + navigationProperty.Name, sb);
+                // Add the UpdateRestrictions annotation
+                AddAnnotationTermAndRecord(matchingProperty, Term.UpdateRestrictionsTerm, PropertyValue.UpdatableProperty, methods.PutAllowed);
+
+                // Add the DeleteRestrictions annotation
+                AddAnnotationTermAndRecord(matchingProperty, Term.DeleteRestrictionsTerm, PropertyValue.DeletableProperty, methods.DeleteAllowed);
+
+                // Add ExpandRestrictions annotation
+                //AddAnnotationTermAndRecord(matchingProperty, Term.ExpandRestrictionsTerm, PropertyValue.ExpandableProperty, matchingProperty.Expandable);
+
+                // Add FilterStrictions annotation
+                //AddAnnotationTermAndRecord(matchingProperty, Term.FilterRestrictionsTerm, PropertyValue.FilterableProperty, matchingProperty.Filterable);
             }
             else
             {
@@ -162,6 +168,64 @@ namespace ApiDocs.Publishing.CSDL
                     "EntityType '{0}' doesn't have a matching navigationProperty '{1}' but a request exists for this. Sounds like a documentation error.",
                     navigationProperty.QualifiedType,
                     navigationProperty.Name);
+            }
+        }
+
+        private void AddAnnotationTermAndRecord(NavigationProperty target, string term, string propertyName, bool value)
+        {
+            if (null == target.Annotation)
+            {
+                target.Annotation = new List<Annotation>();
+            }
+
+            var annotation = target.Annotation.Where(x => x.Term == term).FirstOrDefault();
+            if (null == annotation)
+            {
+                annotation = new Annotation { Term = term, Records = new List<Record>() };
+                target.Annotation.Add(annotation);
+            }
+
+
+            // Check to see if this record already exists before we add it
+            var record = annotation.Records.Where(x => x.PropertyValue.Property == propertyName).FirstOrDefault();
+            if (null != record)
+            {
+                // We OR the values together, because if someone thought we could do this somewhere, we can do it anywhere
+                record.PropertyValue.Bool = record.PropertyValue.Bool | value;
+                record.PropertyValue.BoolSpecified = true;
+            }
+            else
+            {
+                annotation.Records.Add(new Record { PropertyValue = new PropertyValue { Property = propertyName, Bool = value, BoolSpecified = true } });
+            }
+        }
+
+        /// <summary>
+        /// This method should be used for TopSupported, SkipSupported
+        /// </summary>
+        /// <param name="target"></param>
+        /// <param name="term"></param>
+        /// <param name="value"></param>
+        private void AddAnnotationTerm(NavigationProperty target, string term, bool value)
+        {
+            Debug.Assert(term.Equals(Term.TopSupportedTerm) || term.Equals(Term.SkipSupportedTerm), $"Unsupported term value specified: {term}");
+
+            // Check to see if this annotation already exists
+            var annotation = target.Annotation.Where(x => x.Term == term).FirstOrDefault();
+            if (null != annotation)
+            {
+                annotation.Bool = annotation.Bool | value;
+                annotation.BoolSpecified = true;
+            }
+            else
+            {
+                annotation = new Annotation { Term = term, Bool = value, BoolSpecified = true };
+
+                if (target.Annotation == null)
+                {
+                    target.Annotation = new List<Annotation>();
+                }
+                target.Annotation.Add(annotation);
             }
         }
 

@@ -61,7 +61,7 @@ namespace ApiDocs.Validation
         public ParameterDataType(string customDataType, bool isCollection = false)
         {
             // Remove the prefix '#' that @odata.type may include
-            if (customDataType.StartsWith("#"))
+            if (null != customDataType && customDataType.StartsWith("#"))
                 customDataType = customDataType.Substring(1);
 
             if (isCollection)

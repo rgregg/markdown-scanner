@@ -40,5 +40,11 @@ namespace ApiDocs.Validation.OData
 
         [XmlElement("Record", Namespace = ODataParser.EdmNamespace), DefaultValue(null)]
         public List<Record> Records { get; set; }
+
+        [XmlElement("Bool", Namespace = ODataParser.EdmNamespace), DefaultValue(null)]
+        public bool Bool { get; set; }
+
+        [XmlIgnore]
+        public bool BoolSpecified { get; set; }
     }
 }

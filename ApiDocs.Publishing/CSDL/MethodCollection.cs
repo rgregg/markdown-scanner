@@ -50,6 +50,15 @@ namespace ApiDocs.Publishing.CSDL
             get { return HttpVerbAllowed("PUT"); }
         }
 
+
+        public bool ExpandAllowed
+        {
+            get {
+                // TODO: Implement this.
+                return true;
+            }
+        }
+
         /// <summary>
         /// Indicates that all methods in this collection are Idempotent methods
         /// </summary>
