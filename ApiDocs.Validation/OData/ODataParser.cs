@@ -200,13 +200,13 @@ namespace ApiDocs.Validation.OData
         /// </summary>
         /// <param name="input"></param>
         /// <returns></returns>
-        public static string GenerateEdmx(EntityFramework input)
+        public static string GenerateEdmx(EntityFramework input, bool omitXmlDeclaration, bool indentXml)
         {
             StringBuilder sb = new StringBuilder();
             StringWriter stringWriter = new StringWriter(sb);
             XmlWriter writer = XmlWriter.Create(
                 stringWriter,
-                new XmlWriterSettings { Encoding = new UTF8Encoding(false), OmitXmlDeclaration = true, Indent = true });
+                new XmlWriterSettings { Encoding = new UTF8Encoding(false), OmitXmlDeclaration = omitXmlDeclaration, Indent = indentXml });
 
             XmlSerializerNamespaces ns = new XmlSerializerNamespaces();
             ns.Add("edmx", ODataParser.EdmxNamespace);

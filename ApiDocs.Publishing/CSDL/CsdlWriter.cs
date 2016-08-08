@@ -38,12 +38,23 @@ namespace ApiDocs.Publishing.CSDL
     {
         private readonly string[] validNamespaces;
         private readonly string baseUrl;
+        private readonly CsdlWriterSettings settings;
 
         public CsdlWriter(DocSet docs, string[] namespacesToExport, string baseUrl)
             : base(docs)
         {
             this.validNamespaces = namespacesToExport;
             this.baseUrl = baseUrl;
+
+            var config = DocSet.TryLoadConfigurationFiles<CsdlWriterConfigFile>(docs.SourceFolderPath).SingleOrDefault();
+            if (null != config)
+            {
+                settings = config.CsdlWriterSettings;
+            }
+            else
+            {
+                settings = new CsdlWriterSettings();
+            }
         }
 
         public override async Task PublishToFolderAsync(string outputFolder)
@@ -52,13 +63,13 @@ namespace ApiDocs.Publishing.CSDL
             EntityFramework framework = CreateEntityFrameworkFromDocs(this.baseUrl);
 
             // Step 2: Generate XML representation of EDMX
-            var xmlData = ODataParser.GenerateEdmx(framework);
+            var xmlData = ODataParser.GenerateEdmx(framework, !settings.IncludeXmlDeclaration, settings.IndentXml);
 
             // Step 3: Write the XML to disk
             var outputDir = new System.IO.DirectoryInfo(outputFolder);
             outputDir.Create();
 
-            var outputFilename = System.IO.Path.Combine(outputFolder, "metadata.edmx");
+            var outputFilename = System.IO.Path.Combine(outputFolder, settings.OutputFilename);
             using (var writer = System.IO.File.CreateText(outputFilename))
             {
                 await writer.WriteAsync(xmlData);
@@ -87,6 +98,10 @@ namespace ApiDocs.Publishing.CSDL
             // Add actions to the collection
             this.ProcessRestRequestPaths(edmx, baseUrlToRemove);
 
+            if (settings.ExcludedNamespaces.Any())
+            {
+                edmx.DataServices.Schemas.RemoveAll(x => settings.ExcludedNamespaces.Contains(x.Namespace));
+            }
             return edmx;
         }
 
@@ -269,19 +284,19 @@ namespace ApiDocs.Publishing.CSDL
                     {
                         // queryable for OneDrive SDK
                         if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
-                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Queryable", Bool = true });
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Queryable", Bool = true, BoolSpecified =true });
                     }
                     else if (methodCollection.PostAllowed)
                     {
                         // writable for OneDrive SDK
                         if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
-                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Writable", Bool = true });
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Writable", Bool = true, BoolSpecified = true });
                     }
                     else if (methodCollection.DeleteAllowed)
                     {
                         // deletable for OneDrive SDK
                         if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
-                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Deletable", Bool = true });
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Deletable", Bool = true, BoolSpecified = true });
                     }
                 }
                 else
@@ -290,7 +305,7 @@ namespace ApiDocs.Publishing.CSDL
                     {
                         // enumerable for OneDrive SDK
                         if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
-                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Enumerable", Bool = true });
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Enumerable", Bool = true, BoolSpecified = true });
                     }
                 }
             }
