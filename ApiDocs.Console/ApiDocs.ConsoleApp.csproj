@@ -75,6 +75,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppVeyor\BuildWorkerApi.cs" />
+    <Compile Include="Auth\AuthConfigurationException.cs" />
+    <Compile Include="Auth\AuthServiceException.cs" />
     <Compile Include="Auth\BasicAccount.cs" />
     <Compile Include="Auth\OAuthAccount.cs" />
     <Compile Include="Auth\OAuthTokenGenerator.cs" />

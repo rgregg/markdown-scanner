@@ -59,6 +59,7 @@
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="HttpLog\HttpLogGenerator.cs" />
     <Compile Include="Http\HttpParser.cs" />
+    <Compile Include="Http\HttpParserException.cs" />
     <Compile Include="Http\HttpRequest.cs" />
     <Compile Include="Http\HttpResponse.cs" />
     <Compile Include="IServiceAccount.cs" />

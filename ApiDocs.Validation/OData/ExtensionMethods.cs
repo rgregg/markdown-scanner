@@ -173,6 +173,14 @@ namespace ApiDocs.Validation.OData
             {
                 return "Collection(" + ((ODataCollection)type).TypeIdentifier + ")";
             }
+            else if (type is Singleton)
+            {
+                return type.TypeIdentifier;
+            }
+            else if (type is EntitySet)
+            {
+                return $"Collection({type.TypeIdentifier})";
+            }
 
             foreach (var schema in edmx.DataServices.Schemas)
             {
@@ -191,6 +199,10 @@ namespace ApiDocs.Validation.OData
                         if (ct == type)
                             return schema.Namespace + "." + ct.Name;
                     }
+                }
+                else
+                {
+                    throw new NotSupportedException($"Unsupported object type: {type.GetType().Name}");
                 }
             }
 

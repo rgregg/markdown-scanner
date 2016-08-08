@@ -101,8 +101,7 @@ namespace ApiDocs.ConsoleApp.Auth
             var value = Environment.GetEnvironmentVariable(name);
             if (string.IsNullOrEmpty(value))
             {
-                throw new InvalidOperationException(
-                    string.Format("No value was found for environment variable: {0}", name));
+                throw new AuthConfigurationException($"No value was found for environment variable: {name}");
             }
             return value;
         }
@@ -120,7 +119,7 @@ namespace ApiDocs.ConsoleApp.Auth
                     break;
 
                 default:
-                    throw new NotSupportedException("Unsupported oauthMode value:" + this.Type.ToString());
+                    throw new AuthConfigurationException($"Unsupported oauthMode value: {this.Type}");
             }
         }
 
@@ -136,8 +135,7 @@ namespace ApiDocs.ConsoleApp.Auth
                 }
                 else
                 {
-                    throw new InvalidOperationException(
-                        string.Format("Failed to retrieve access token for account: {0}", this.Name));
+                    throw new AuthServiceException($"Failed to retrieve access token for account: {this.Name}");
                 }
             }
         }
@@ -155,8 +153,7 @@ namespace ApiDocs.ConsoleApp.Auth
                 }
                 else
                 {
-                    throw new InvalidOperationException(
-                        string.Format("Failed to convert username + password to access token for account: {0}", this.Name));
+                    throw new AuthServiceException($"Failed to convert username + password to access token for account: {this.Name}");
                 }
             }
         }

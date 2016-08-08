@@ -25,10 +25,12 @@
 
 namespace ApiDocs.Validation.OData
 {
+    using System;
+    using System.Collections.Generic;
     using System.Xml.Serialization;
 
     [XmlRoot("EntitySet", Namespace = ODataParser.EdmNamespace)]
-    public class EntitySet
+    public class EntitySet : IODataNavigable
     {
         [XmlAttribute("Name")]
         public string Name { get; set; }
@@ -36,5 +38,22 @@ namespace ApiDocs.Validation.OData
         [XmlAttribute("EntityType")]
         public string EntityType { get; set; }
 
+        [XmlElement("Annotation", Namespace = ODataParser.EdmNamespace)]
+        public List<Annotation> Annotation { get; set; }
+
+        public string TypeIdentifier
+        {
+            get { return this.EntityType; }
+        }
+
+        public IODataNavigable NavigateByUriComponent(string component, EntityFramework edmx)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IODataNavigable NavigateByEntityTypeKey(EntityFramework edmx)
+        {
+            return edmx.LookupNavigableType(EntityType);
+        }
     }
 }

@@ -50,7 +50,6 @@ namespace ApiDocs.Validation.OData
         [XmlElement("Singleton")]
         public List<Singleton> Singletons { get; set; }
 
-
         public IODataNavigable NavigateByUriComponent(string component, EntityFramework edmx)
         {
             string targetType = null;
@@ -60,8 +59,7 @@ namespace ApiDocs.Validation.OData
                              select e).FirstOrDefault();
             if (null != entitySet)
             {
-                // EntitySet is always a collection of an item type
-                targetType = "Collection(" + entitySet.EntityType + ")";
+                return entitySet;
             }
             else
             {
@@ -71,7 +69,7 @@ namespace ApiDocs.Validation.OData
 
                 if (null != singleton)
                 {
-                    targetType = singleton.Type;
+                    return singleton;
                 }
             }
 
@@ -80,7 +78,7 @@ namespace ApiDocs.Validation.OData
                 if (targetType.StartsWith("Collection("))
                 {
                     var innerId = targetType.Substring(11, targetType.Length - 12);
-                    return new ODataCollection(innerId);
+                    return new ODataCollection(innerId) { Parent = this };
                 }
                 return edmx.ResourceWithIdentifier<IODataNavigable>(targetType);
             }

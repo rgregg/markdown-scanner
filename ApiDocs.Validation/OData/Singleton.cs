@@ -25,10 +25,12 @@
 
 namespace ApiDocs.Validation.OData
 {
+    using System;
+    using System.Collections.Generic;
     using System.Xml.Serialization;
 
     [XmlRoot("Singleton", Namespace = ODataParser.EdmNamespace)]
-    public class Singleton
+    public class Singleton : IODataNavigable
     {
         [XmlAttribute("Name")]
         public string Name { get; set; }
@@ -36,5 +38,26 @@ namespace ApiDocs.Validation.OData
         [XmlAttribute("Type")]
         public string Type { get; set; }
 
+        [XmlElement("Annotation", Namespace = ODataParser.EdmNamespace)]
+        public List<Annotation> Annotations { get; set; }
+
+        public string TypeIdentifier
+        {
+            get
+            {
+                return this.Type;
+            }
+        }
+
+        public IODataNavigable NavigateByEntityTypeKey(EntityFramework edmx)
+        {
+            throw new NotSupportedException();
+        }
+
+        public IODataNavigable NavigateByUriComponent(string component, EntityFramework edmx)
+        {
+            var underyingType = edmx.ResourceWithIdentifier<EntityType>(Type);
+            return underyingType.NavigateByUriComponent(component, edmx);
+        }
     }
 }

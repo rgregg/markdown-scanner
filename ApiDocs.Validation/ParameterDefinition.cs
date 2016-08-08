@@ -65,9 +65,25 @@ namespace ApiDocs.Validation
         public string OriginalValue { get; set; }
 
         /// <summary>
-        /// Indicates that the parameter should be represented as a navigation property
+        /// Indicates that the parameter should be represented as a navigation property. Navigation properties
+        /// must point to an EntityType or a collection of EntityType.
         /// </summary>
         public bool IsNavigatable { get; internal set; }
+
+        /// <summary>
+        /// Indicates that the parameter is a collection that can be enumerated.
+        /// </summary>
+        public bool IsEnumerable { get; set; }
+
+        /// <summary>
+        /// Indicates that the parameter is a collection that can be queried by a unique id field
+        /// </summary>
+        public bool IsQueryable { get; set; }
+
+        /// <summary>
+        /// Indicates that the parameter is a collection that can be POSTed or PATCHed.
+        /// </summary>
+        public bool IsWriteable { get; set; }
 
         /// <summary>
         /// Merge values from the param object into this object.

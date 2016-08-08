@@ -114,7 +114,8 @@ namespace ApiDocs.Publishing.CSDL
                     {
                         CreateNewActionOrFunction(edmx, methodCollection, requestTarget);
                     }
-                    else if (requestTarget.Classification == ODataTargetClassification.EntityType)
+                    else if (requestTarget.Classification == ODataTargetClassification.EntityType || 
+                        requestTarget.Classification == ODataTargetClassification.EntitySet)
                     {
                         // We've learned more about this entity type, let's add that information to the state
                         AppendToEntityType(edmx, requestTarget, methodCollection);
@@ -141,10 +142,19 @@ namespace ApiDocs.Publishing.CSDL
 
         private void AppendToNavigationProperty(EntityFramework edmx, ODataTargetInfo navigationProperty, MethodCollection methods)
         {
-            EntityType parentType = edmx.ResourceWithIdentifier<EntityType>(navigationProperty.QualifiedType);
+            NavigationProperty matchingProperty = null;
 
-            NavigationProperty matchingProperty =
-                parentType.NavigationProperties.FirstOrDefault(np => np.Name == navigationProperty.Name);
+            //if (navigationProperty is ODataCollection)
+            //{
+            //    var collection = navigationProperty.
+
+            //}
+            //else
+            //{
+                EntityType parentType = edmx.ResourceWithIdentifier<EntityType>(navigationProperty.QualifiedType);
+                matchingProperty = parentType.NavigationProperties.FirstOrDefault(np => np.Name == navigationProperty.Name);
+            //}
+                
             if (null != matchingProperty)
             {
                 // Add the InsertRestrctions annotation
@@ -243,6 +253,48 @@ namespace ApiDocs.Publishing.CSDL
             sb.AppendWithCondition(methodCollection.PutAllowed, "PUT", seperator);
             sb.AppendWithCondition(methodCollection.DeleteAllowed, "DELETE", seperator);
 
+            var singleton = requestTarget.Target as Singleton;
+            if (null != singleton)
+            {
+                // TODO: Figure out what attributes we want to write to a singelton
+            }
+
+            var entitySet = requestTarget.Target as EntitySet;
+            if (null != entitySet)
+            {
+                // TODO: figure out what attributes we want to write to an entitySet
+                if (requestTarget.Name == "{var}")
+                {
+                    if (methodCollection.GetAllowed)
+                    {
+                        // queryable for OneDrive SDK
+                        if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Queryable", Bool = true });
+                    }
+                    else if (methodCollection.PostAllowed)
+                    {
+                        // writable for OneDrive SDK
+                        if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Writable", Bool = true });
+                    }
+                    else if (methodCollection.DeleteAllowed)
+                    {
+                        // deletable for OneDrive SDK
+                        if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Deletable", Bool = true });
+                    }
+                }
+                else
+                {
+                    if (methodCollection.GetAllowed)
+                    {
+                        // enumerable for OneDrive SDK
+                        if (entitySet.Annotation == null) entitySet.Annotation = new List<Annotation>();
+                        entitySet.Annotation.Add(new Annotation { Term = "Com.Microsoft.Graph.Enumerable", Bool = true });
+                    }
+                }
+            }
+
             Console.WriteLine("EntityType '{0}' supports: ({1})", requestTarget.QualifiedType, sb.ToString());
         }
 
@@ -311,7 +363,8 @@ namespace ApiDocs.Publishing.CSDL
             {
                 string uriPart = requestParts[i];
                 IODataNavigable nextObject = null;
-                if (uriPart == "{var}")
+
+                if (uriPart == "{var}" && requestParts.Length > i + 1)
                 {
                     try
                     {
@@ -321,8 +374,11 @@ namespace ApiDocs.Publishing.CSDL
                     {
                         throw new NotSupportedException("Unable to navigation into EntityType by key: " + currentObject.TypeIdentifier + " (" + ex.Message + ")");
                     }
-
-
+                }
+                else if (uriPart == "{var}")
+                {
+                    // We're actually addressing the collection modified by var in this case.
+                    break;
                 }
                 else
                 {
@@ -341,7 +397,8 @@ namespace ApiDocs.Publishing.CSDL
                     {
                         Name = uriPart,
                         Classification = uriPart.HasNamespace() ? ODataTargetClassification.Unknown : ODataTargetClassification.NavigationProperty,
-                        QualifiedType = edmx.LookupIdentifierForType(currentObject)
+                        QualifiedType = edmx.LookupIdentifierForType(currentObject),
+                        Target = currentObject
                     };
                 }
                 else if (nextObject == null)
@@ -356,21 +413,22 @@ namespace ApiDocs.Publishing.CSDL
             var response = new ODataTargetInfo
             {
                 Name = requestParts.Last(),
-                QualifiedType = edmx.LookupIdentifierForType(currentObject)
+                QualifiedType = edmx.LookupIdentifierForType(currentObject),
+                Target = currentObject
             };
 
-            if (currentObject is EntityType)
+            if (currentObject is EntityType || currentObject is Singleton)
                 response.Classification = ODataTargetClassification.EntityType;
             else if (currentObject is EntityContainer)
                 response.Classification = ODataTargetClassification.EntityContainer;
             else if (currentObject is ODataSimpleType)
                 response.Classification = ODataTargetClassification.SimpleType;
-            else if (currentObject is ODataCollection)
+            else if (currentObject is ODataCollection || currentObject is EntitySet)
             {
                 if (previousObject != entryPoint)
                 {
                     response.Classification = ODataTargetClassification.NavigationProperty;
-                    response.QualifiedType = edmx.LookupIdentifierForType(previousObject);
+                    response.QualifiedType = edmx.LookupIdentifierForType(currentObject);
                 }
                 else
                 {
@@ -379,11 +437,11 @@ namespace ApiDocs.Publishing.CSDL
             }
             else if (currentObject is ComplexType)
             {
-                throw new NotSupportedException(string.Format("Encountered a ComplexType. This is probably a doc bug where type '{0}' should be defined with keyProperty to be an EntityType", currentObject.TypeIdentifier));
+                throw new NotSupportedException($"Encountered a ComplexType. This is probably a doc bug where type '{currentObject.TypeIdentifier}' should be defined with keyProperty to be an EntityType");
             }
             else
             {
-                throw new NotSupportedException(string.Format("Unhandled object type: {0}", currentObject.GetType().Name));
+                throw new NotSupportedException($"Unhandled object type: {currentObject.GetType().Name}");
             }
 
             return response;
@@ -536,6 +594,12 @@ namespace ApiDocs.Publishing.CSDL
                                where !p.IsNavigatable && !p.Name.StartsWith("@")
                                select ConvertParameterToProperty<Property>(p) ).ToList();
 
+            if (!string.IsNullOrEmpty(resource.KeyPropertyName))
+            {
+                // Make sure the keyProperty is not nullable
+                type.Properties.Where(x => x.Name == resource.KeyPropertyName).Single().Nullable = false;
+            }
+
             var annotations = (from p in resource.Parameters where p.Name != null && p.Name.StartsWith("@") select p);
             ParseInstanceAnnotations(annotations, resource, edmx);
         }
@@ -569,9 +633,13 @@ namespace ApiDocs.Publishing.CSDL
             var prop = new T()
             {
                 Name = param.Name,
-                Nullable = (param.Required.HasValue ? !param.Required.Value : false),
                 Type = param.Type.ODataResourceName()
             };
+
+            //if (param.Required.HasValue)
+            //{
+            //    prop.Nullable = !param.Required.Value;
+            //}
 
             // Add description annotation
             if (!string.IsNullOrEmpty(param.Description))

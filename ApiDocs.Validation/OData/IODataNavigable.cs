@@ -48,6 +48,8 @@ namespace ApiDocs.Validation.OData
     public class ODataCollection : IODataNavigable
     {
         public string TypeIdentifier { get; internal set; }
+        public IODataNavigable Parent { get; set; }
+        public Property ParentProperty { get; set; }
 
         public ODataCollection(string typeIdentifier)
         {
@@ -98,6 +100,8 @@ namespace ApiDocs.Validation.OData
         public string QualifiedType { get; set; }
 
         public string Name { get; set; }
+
+        public IODataNavigable Target { get; set; }
     }
 
 

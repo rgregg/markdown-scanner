@@ -45,7 +45,6 @@ namespace ApiDocs.Validation.OData
         [XmlElement("NavigationProperty", Namespace = ODataParser.EdmNamespace)]
         public List<NavigationProperty> NavigationProperties { get; set; }
 
-
         public override IODataNavigable NavigateByUriComponent(string component, EntityFramework edmx)
         {
             var navigationPropertyMatch = (from n in this.NavigationProperties
@@ -57,7 +56,7 @@ namespace ApiDocs.Validation.OData
                 if (identifier.StartsWith("Collection("))
                 {
                     var innerId = identifier.Substring(11, identifier.Length - 12);
-                    return new ODataCollection(innerId);
+                    return new ODataCollection(innerId) { Parent = this, ParentProperty = navigationPropertyMatch };
                 }
                 return edmx.LookupNavigableType(identifier);
             }

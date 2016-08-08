@@ -46,8 +46,6 @@ namespace ApiDocs.Validation.OData
         [XmlAttribute("OpenType"), DefaultValue(false)]
         public bool OpenType { get; set; }
 
-
-
         [XmlElement("Property", Namespace = ODataParser.EdmNamespace)]
         public List<Property> Properties { get; set; }
 
@@ -72,7 +70,7 @@ namespace ApiDocs.Validation.OData
                 if (identifier.StartsWith("Collection("))
                 {
                     var innerId = identifier.Substring(11, identifier.Length - 12);
-                    return new ODataCollection(innerId);
+                    return new ODataCollection(innerId) { Parent = this, ParentProperty = propertyMatch };
                 }
                 return edmx.ResourceWithIdentifier<IODataNavigable>(identifier);
             }

@@ -38,8 +38,19 @@ namespace ApiDocs.Validation.OData
         [XmlAttribute("Type")]
         public string Type { get; set; }
 
-        [XmlAttribute("Nullable"), DefaultValue(false)]
-        public bool Nullable { get; set; }
+        [XmlIgnore]
+        public bool? Nullable { get; set; }
+
+        [XmlAttribute("Nullable")]
+        public bool NullableOutputValue
+        {
+            get { return Nullable.HasValue ? Nullable.Value : false; }
+            set { Nullable = value; }
+        }
+
+        [XmlIgnore]
+        public bool NullableOutputValueSpecified { get { return Nullable.HasValue; } }
+
 
         [XmlElement("Annotation", Namespace = ODataParser.EdmNamespace)]
         public List<Annotation> Annotation { get; set; }
