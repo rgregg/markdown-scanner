@@ -658,9 +658,9 @@ namespace ApiDocs.Publishing.CSDL
                 var localName = qualifiedName.TypeOnly();
 
                 Term term = new Term { Name = localName, AppliesTo = containedResource.Name, Type = prop.Type.ODataResourceName() };
-                if (!string.IsNullOrEmpty(prop.Description))
+                if (settings.IncludeDescriptions && !string.IsNullOrEmpty(prop.Description))
                 {
-                    term.Annotations.Add(new Annotation { Term = Term.LongDescriptionTerm, String = prop.Description });
+                    term.Annotations.Add(new Annotation { Term = Term.DescriptionTerm, String = prop.Description });
                 }
 
                 var targetSchema = FindOrCreateSchemaForNamespace(ns, edmx, overrideNamespaceFilter: true);
@@ -672,7 +672,7 @@ namespace ApiDocs.Publishing.CSDL
         }
 
 
-        private static T ConvertParameterToProperty<T>(ParameterDefinition param) where T : Property, new()
+        private T ConvertParameterToProperty<T>(ParameterDefinition param) where T : Property, new()
         {
             var prop = new T()
             {
@@ -686,7 +686,7 @@ namespace ApiDocs.Publishing.CSDL
             //}
 
             // Add description annotation
-            if (!string.IsNullOrEmpty(param.Description))
+            if (settings.IncludeDescriptions && !string.IsNullOrEmpty(param.Description))
             {
                 prop.Annotation = new List<Annotation>();
                 prop.Annotation.Add(

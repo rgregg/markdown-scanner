@@ -29,6 +29,7 @@ namespace ApiDocs.Publishing.CSDL
             this.IncludeXmlDeclaration = true;
             this.OutputFilename = "metadata.csdl";
             this.IndentXml = true;
+            this.IncludeDescriptions = true;
         }
 
         [JsonProperty("excludedNamespaces")]
@@ -46,6 +47,9 @@ namespace ApiDocs.Publishing.CSDL
 
         [JsonProperty("flattenActionsToNamespace")]
         public string FlattenActionsToNamespace { get; set; }
+
+        [JsonProperty("includeDescriptions")]
+        public bool IncludeDescriptions { get; set; }
 
     }
 }
