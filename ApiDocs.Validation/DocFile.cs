@@ -716,7 +716,7 @@ namespace ApiDocs.Validation
             }
         }
 
-        private static void SetFoundTablesOnMethod(IEnumerable<TableDefinition> foundTables, MethodDefinition onlyMethod)
+        private void SetFoundTablesOnMethod(IEnumerable<TableDefinition> foundTables, MethodDefinition onlyMethod)
         {
             foreach (var table in foundTables)
             {

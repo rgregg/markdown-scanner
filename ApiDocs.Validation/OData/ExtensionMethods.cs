@@ -246,11 +246,15 @@ namespace ApiDocs.Validation.OData
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static string ODataResourceName(this ParameterDataType type)
+        public static string ODataResourceName(this ParameterDataType type, EntityFramework edmx = null)
         {
 
             if (type.Type == SimpleDataType.Object && !string.IsNullOrEmpty(type.CustomTypeName))
             {
+                // Need to resolve the custom type name in our schema. It might just be "ItemReference" instead of "oneDrive.itemReference"
+                if (edmx != null)
+                    return ResolveODataResourceName(type.CustomTypeName, edmx);
+
                 return type.CustomTypeName;
             }
 
@@ -258,14 +262,38 @@ namespace ApiDocs.Validation.OData
             {
                 return string.Format(
                     "Collection({0})",
-                    type.CollectionResourceType.ODataResourceName(type.CustomTypeName));
+                    type.CollectionResourceType.ODataResourceName(type.CustomTypeName, edmx));
             }
 
             return type.Type.ODataResourceName();
         }
 
+        public static string ResolveODataResourceName(string resourceTypeName, EntityFramework edmx)
+        {
+            if (string.IsNullOrEmpty(resourceTypeName))
+                throw new ArgumentException("type parameter does not contain a valid custom type reference");
 
+            var typeParts = resourceTypeName.Split('.');
+            var typeName = typeParts.LastOrDefault();
+            var schemaName = typeParts.ComponentsJoinedByString(".", maxiumComponents: typeParts.Length - 1);
 
+            if (schemaName != null)
+            {
+                // The type name is already fully expressed, so skip searching for it.
+                return resourceTypeName;
+            }
+
+            foreach(var schema in edmx.DataServices.Schemas)
+            {
+                ComplexType match = schema.FindResourceTypeWithName(typeName, true);
+                if (null != match)
+                    return $"{schema.Namespace}.{match.Name}";
+            }
+
+            // Unresolved, but we return it anyway
+            return resourceTypeName;
+
+        }
 
         /// <summary>
         /// Convert a simple type into OData equivelent. If Object is specified, a customDataType can be returned instead.
@@ -273,10 +301,14 @@ namespace ApiDocs.Validation.OData
         /// <param name="type"></param>
         /// <param name="customDataType"></param>
         /// <returns></returns>
-        public static string ODataResourceName(this SimpleDataType type, string customDataType = null)
+        public static string ODataResourceName(this SimpleDataType type, string customDataType = null, EntityFramework edmx = null)
         {
             if (type == SimpleDataType.Object && !string.IsNullOrEmpty(customDataType))
+            {
+                if (null != edmx)
+                    return ResolveODataResourceName(customDataType, edmx);
                 return customDataType;
+            }
 
             string typeName = (from kv in ODataSimpleTypeMap where kv.Value == type select kv.Key).SingleOrDefault();
             if (null == typeName)

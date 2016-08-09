@@ -27,6 +27,7 @@ namespace ApiDocs.Validation.OData
 {
     using System.Collections.Generic;
     using System.Xml.Serialization;
+    using System.Linq;
 
     [XmlRoot("Schemas", Namespace = ODataParser.EdmNamespace)]
     public class Schema
@@ -63,6 +64,16 @@ namespace ApiDocs.Validation.OData
             this.Functions = new List<Function>();
             this.Actions = new List<Action>();
             this.Terms = new List<Term>();
+        }
+
+        internal ComplexType FindResourceTypeWithName(string name, bool ignoreCase)
+        {
+            ComplexType match = this.ComplexTypes.Where(x => x.Name.Equals(name, ignoreCase ? System.StringComparison.OrdinalIgnoreCase : System.StringComparison.Ordinal)).FirstOrDefault();
+            if (match != null)
+                return match;
+
+            match = this.Entities.Where(x => x.Name.Equals(name, ignoreCase ? System.StringComparison.OrdinalIgnoreCase : System.StringComparison.Ordinal)).FirstOrDefault();
+            return match;
         }
      
     }

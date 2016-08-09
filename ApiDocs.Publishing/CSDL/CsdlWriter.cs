@@ -326,19 +326,48 @@ namespace ApiDocs.Publishing.CSDL
                 target = new Validation.OData.Action();
             }
 
-            var schemaName = requestTarget.Name.NamespaceOnly();
+            string schemaName = requestTarget.Name.NamespaceOnly();
             target.Name = requestTarget.Name.TypeOnly();
+
+            if (!string.IsNullOrEmpty(settings.FlattenActionsToNamespace))
+            {
+                target.Name = $"{schemaName}.{target.Name}";
+                schemaName = settings.FlattenActionsToNamespace;
+            }
+
             target.IsBound = true;
             target.Parameters.Add(new Parameter { Name = "bindingParameter", Type = requestTarget.QualifiedType, Nullable = false });
             foreach (var param in methodCollection.RequestBodyParameters)
             {
-                target.Parameters.Add(
-                    new Parameter
-                    {
-                        Name = param.Name,
-                        Type = param.Type.ODataResourceName(),
-                        Nullable = (param.Required.HasValue ? param.Required.Value : false)
-                    });
+                var newParameter = new Parameter
+                {
+                    Name = param.Name,
+                    Type = param.Type.ODataResourceName(edmx)
+                };
+
+                if (param.Required.HasValue && param.Required.Value)
+                {
+                    newParameter.Nullable = false;
+                }
+                target.Parameters.Add(newParameter);
+            }
+
+            foreach(var param in methodCollection.Parameters)
+            {
+                if (param.Location != ParameterLocation.QueryString)
+                    continue;
+
+                var newParameter = new Parameter
+                {
+                    Name = param.Name,
+                    Type = param.Type.ODataResourceName(edmx)
+                };
+
+                if (param.Required.HasValue && param.Required.Value)
+                {
+                    newParameter.Nullable = false;
+                }
+                target.Parameters.Add(newParameter);
             }
 
             if (methodCollection.ResponseType != null)

@@ -44,5 +44,8 @@ namespace ApiDocs.Publishing.CSDL
         [JsonProperty("outputFilename")]
         public string OutputFilename { get; set; }
 
+        [JsonProperty("flattenActionsToNamespace")]
+        public string FlattenActionsToNamespace { get; set; }
+
     }
 }

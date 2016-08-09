@@ -46,23 +46,30 @@ namespace ApiDocs.Validation
             return target.IndexOf(value, StringComparison.OrdinalIgnoreCase) != -1;
         }
 
-        public static string ComponentsJoinedByString(this IEnumerable<string> source, string separator, int startIndex = 0)
+        public static string ComponentsJoinedByString(this IEnumerable<string> source, string separator, int startIndex = 0, int maxiumComponents = Int32.MaxValue)
         {
             StringBuilder sb = new StringBuilder();
             int index = 0;
+            int count = 0;
+
+            if (maxiumComponents <= 0)
+                return null;
+
             foreach (var component in source)
             {
+                index++;
                 if (index < startIndex)
                 {
-                    index++;
                     continue;
                 }
 
                 if (sb.Length > 0)
                     sb.Append(separator);
                 sb.Append(component);
+                count++;
 
-                index++;
+                if (count >= maxiumComponents)
+                    break;
             }
             return sb.ToString();
         }
@@ -246,15 +253,17 @@ namespace ApiDocs.Validation
             if (lowerValue.Contains("string"))
                 return ParameterDataType.String;
 
-
-            if (defaultValue != null)
-                return defaultValue;
-
-            if (null != addErrorAction)
-            {
-                addErrorAction(new ValidationWarning(ValidationErrorCode.TypeConversionFailure, "Couldn't convert '{0}' into understood data type. Assuming Object type.", value));
-            }
             return new ParameterDataType(value, false);
+
+
+            //if (defaultValue != null)
+            //    return defaultValue;
+
+            //if (null != addErrorAction)
+            //{
+            //    addErrorAction(new ValidationWarning(ValidationErrorCode.TypeConversionFailure, "Couldn't convert '{0}' into understood data type. Assuming Object type.", value));
+            //}
+            //return new ParameterDataType(value, false);
         }
 
         public static SimpleDataType ParseSimpleTypeString(string lowercaseString)

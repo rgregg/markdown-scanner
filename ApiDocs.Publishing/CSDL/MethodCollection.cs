@@ -79,6 +79,15 @@ namespace ApiDocs.Publishing.CSDL
             }
         }
 
+        public List<Validation.ParameterDefinition> Parameters
+        {
+            get
+            {
+                // TODO: For collections with multiple requests, we should create a union of these requests
+                return this.First().Parameters;
+            }
+        }
+
         /// <summary>
         /// Returns the response type if the collection contains only a single request method.
         /// </summary>
