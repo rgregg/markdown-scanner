@@ -152,13 +152,7 @@ namespace ApiDocs.Publishing.Html
             if (!string.IsNullOrEmpty(this.Options.TableOfContentsOutputRelativePath))
             {
                 var outputFile = Path.Combine(this.OutputFolder, this.Options.TableOfContentsOutputRelativePath);
-
-                DataFormat tocFormat;
-                if (!Enum.TryParse<DataFormat>(this.Options.TocFormat, true, out tocFormat))
-                {
-                    throw new InvalidOperationException("Unable to convert the tocFormat to a supported value.");
-                }
-                await WriteTableOfContentsFileAsync(outputFile, tocFormat);
+                await WriteTableOfContentsFileAsync(outputFile, this.Options.TocFormat);
             }
         }
 
@@ -230,43 +224,23 @@ namespace ApiDocs.Publishing.Html
             if (null == section)
                 return new TocItem[0];
 
+
+
+
             // Generate headers for all tocPath entries
             var headersQuery = from d in this.Documents.Files
                                where d.Annotation != null
                                && string.Equals(d.Annotation.Section, section, StringComparison.OrdinalIgnoreCase)
                                && !string.IsNullOrEmpty(d.Annotation.TocPath)
                                orderby d.Annotation.TocPath
-                               select new TocItem {
-                                   DocFile = d,
-                                   Title = d.Annotation.TocPath.LastPathComponent(),
-                                   TocPath = d.Annotation.TocPath,
-                                   Url = this.RelativeUrlFromCurrentPage(d, destinationFile, rootDestinationFolder),
-                                   SortOrder = d.Annotation.TocIndex
-                          };
+                               select d;
 
-            List<TocItem> headers = headersQuery.ToList();
-
-            // Generate headers for all tocEntry items
-            var multipleTocItemPages = from d in this.Documents.Files
-                where d.Annotation != null 
-                && d.Annotation.TocBookmarks != null
-                && string.Equals(d.Annotation.Section, section, StringComparison.OrdinalIgnoreCase)
-                && d.Annotation.TocBookmarks.Count > 0
-                select new { DocFile = d, TocItems = d.Annotation.TocBookmarks };
-
-            foreach (var item in multipleTocItemPages)
+            List<TocItem> headers = new List<Html.TocItem>();
+            foreach(var file in headersQuery)
             {
-                headers.AddRange(
-                    from entry in item.TocItems
-                    where entry.Value != null && entry.Value.StartsWith("#")
-                    select new TocItem
-                    {
-                        DocFile = item.DocFile,
-                        Title = entry.Key.LastPathComponent(),
-                        TocPath = entry.Key,
-                        Url = this.RelativeUrlFromCurrentPage(item.DocFile, destinationFile, rootDestinationFolder, entry.Value)
-                    });
+                headers.AddRange(TocItem.TocItemsForFile(file));
             }
+
             headers = headers.OrderBy(x => x.TocPath).ToList();
             headers = this.BuildTreeFromList(headers, currentPage);
             return headers;
@@ -320,12 +294,6 @@ namespace ApiDocs.Publishing.Html
             if (file.Annotation == null || file.Annotation.Section == null)
                 return;
 
-        }
-
-        public enum DataFormat
-        {
-            Json,
-            XML
         }
 
         /// <summary>
@@ -457,6 +425,8 @@ namespace ApiDocs.Publishing.Html
                     Title = file.Annotation.TocPath.LastPathComponent(),
                     TocPath = file.Annotation.TocPath,
                     Url = file.DisplayName,
+                    PageDescription = file.Annotation.Description,
+                    Keywords = file.Annotation.Keywords,
                     Section = file.Annotation.Section,
                     SortOrder = file.Annotation.TocIndex
                 });
@@ -472,7 +442,9 @@ namespace ApiDocs.Publishing.Html
                         Title = path.LastPathComponent(),
                         TocPath = path,
                         Url = file.DisplayName + file.Annotation.TocBookmarks[path],
-                        Section = file.Annotation.Section
+                        Section = file.Annotation.Section,
+                        PageDescription = file.Annotation.Description,
+                        Keywords = file.Annotation.Keywords
                     });
                 }
             }

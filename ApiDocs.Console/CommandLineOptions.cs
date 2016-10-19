@@ -364,7 +364,7 @@ namespace ApiDocs.ConsoleApp
         [Option("output", Required=true, HelpText="Output directory for sanitized documentation.")]
         public string OutputDirectory { get; set; }
 
-        [Option("format", DefaultValue=PublishFormat.Markdown, HelpText="Format of the output documentation. Possiblev values are html, markdown, mustache, jsontoc, swagger, and edmx.")]
+        [Option("format", DefaultValue=PublishFormat.Markdown, HelpText="Format of the output documentation. Possible values are html, markdown, mustache, toc, swagger, and edmx.")]
         public PublishFormat Format { get; set; }
 
         [Option("template", HelpText = "Specify the folder where output template files are located.")]
@@ -392,6 +392,9 @@ namespace ApiDocs.ConsoleApp
         {
             get; set;
         }
+
+        [Option("toc-format", HelpText="Specify the format of the TOC output file. Json or XML.", DefaultValue = DataFormat.Json)]
+        public DataFormat TocFormat { get; set; }
 
         public string[] FilesToPublish {
             get { return (this.SourceFiles ?? string.Empty).Split(new char[] {';'}, StringSplitOptions.RemoveEmptyEntries); }
@@ -457,7 +460,7 @@ namespace ApiDocs.ConsoleApp
             Outline,
             Mustache,
             Edmx,
-            JsonToc
+            TOC
         }
     }
 }

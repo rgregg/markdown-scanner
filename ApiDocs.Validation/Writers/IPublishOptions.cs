@@ -73,6 +73,17 @@ namespace ApiDocs.Validation.Writers
         /// Allows HTML tags in the markdown source to be passed through to the output markdown.
         /// </summary>
         bool AllowUnsafeHtmlContentInMarkdown { get; set; }
+
+        /// <summary>
+        /// Specify the output format for the TOC file
+        /// </summary>
+        DataFormat TocFormat { get; set; }
+    }
+
+    public enum DataFormat
+    {
+        Json,
+        XML
     }
 
     public class DefaultPublishOptions : IPublishOptions
@@ -91,5 +102,7 @@ namespace ApiDocs.Validation.Writers
         public string TableOfContentsOutputRelativePath { get; set; }
 
         public bool AllowUnsafeHtmlContentInMarkdown { get; set; }
+
+        public DataFormat TocFormat { get; set; }
     }
 }

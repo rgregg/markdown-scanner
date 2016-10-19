@@ -1100,7 +1100,7 @@ namespace ApiDocs.ConsoleApp
                 case PublishOptions.PublishFormat.Mustache:
                     publisher = new HtmlMustacheWriter(docs, options);
                     break;
-                case PublishOptions.PublishFormat.JsonToc:
+                case PublishOptions.PublishFormat.TOC:
                     publisher = new HtmlMustacheWriter(docs, options) { TocOnly = true };
                     break;
                 case PublishOptions.PublishFormat.Swagger2:
