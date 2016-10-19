@@ -35,6 +35,8 @@ namespace ApiDocs.Publishing.Html
     using Mustache;
     using System.Dynamic;
     using Newtonsoft.Json;
+    using System.Xml.Serialization;
+
     public class HtmlMustacheWriter : DocumentPublisherHtml
     {
         private Generator generator;
@@ -150,7 +152,13 @@ namespace ApiDocs.Publishing.Html
             if (!string.IsNullOrEmpty(this.Options.TableOfContentsOutputRelativePath))
             {
                 var outputFile = Path.Combine(this.OutputFolder, this.Options.TableOfContentsOutputRelativePath);
-                await WriteTableOfContentsFileAsync(outputFile);
+
+                DataFormat tocFormat;
+                if (!Enum.TryParse<DataFormat>(this.Options.TocFormat, true, out tocFormat))
+                {
+                    throw new InvalidOperationException("Unable to convert the tocFormat to a supported value.");
+                }
+                await WriteTableOfContentsFileAsync(outputFile, tocFormat);
             }
         }
 
@@ -269,7 +277,7 @@ namespace ApiDocs.Publishing.Html
         /// </summary>
         /// <param name="destination"></param>
         /// <returns></returns>
-        protected async Task WriteTableOfContentsFileAsync(string destination)
+        protected async Task WriteTableOfContentsFileAsync(string destination, DataFormat format)
         {
             List<TocItem> allTocEntries = new List<TocItem>();
             foreach (var file in this.Documents.Files)
@@ -287,7 +295,18 @@ namespace ApiDocs.Publishing.Html
             var tree = BuildTreeFromList(allTocEntries, addLevelForSections: true);
             var data = new { toc = tree };
 
-            string output = JsonConvert.SerializeObject(data, Formatting.Indented);
+            string output = null;
+            switch(format)
+            {
+                case DataFormat.Json:
+                    output = JsonConvert.SerializeObject(data, Formatting.Indented);
+                    break;
+                case DataFormat.XML:
+                    output = XmlTableOfContentsWriter.GenerateXml(tree);
+                    break;
+                default:
+                    throw new InvalidOperationException("DataFormat is invalid: " + format);
+            }
 
             using (var writer = new StreamWriter(destination, false, new System.Text.UTF8Encoding(false)))
             {
@@ -301,6 +320,12 @@ namespace ApiDocs.Publishing.Html
             if (file.Annotation == null || file.Annotation.Section == null)
                 return;
 
+        }
+
+        public enum DataFormat
+        {
+            Json,
+            XML
         }
 
         /// <summary>
@@ -410,6 +435,8 @@ namespace ApiDocs.Publishing.Html
         {
             get; set;
         }
+        public string PageDescription { get; internal set; }
+        public string Keywords { get; internal set; }
 
         public TocItem()
         {
