@@ -89,14 +89,9 @@ namespace ApiDocs.Validation.Http
                         }
 
                         // Parse each header
-                        int split = line.IndexOf(": ", StringComparison.Ordinal);
-                        if (split < 1) 
-                            throw new ArgumentException("requestString contains an invalid header definition");
-
-                        var headerName = line.Substring(0, split);
-                        var headerValue = line.Substring(split + 1);
+                        string headerName, headerValue;
+                        ParseHeader(line, out headerName, out headerValue);
                         request.Headers.Add(headerName, headerValue);
-
                         break;
 
                     case ParserMode.Body:
@@ -110,6 +105,17 @@ namespace ApiDocs.Validation.Http
             }
 
             return request;
+        }
+
+        public static void ParseHeader(string input, out string name, out string value)
+        {
+            // Parse each header
+            int split = input.IndexOf(":", StringComparison.Ordinal);
+            if (split < 1)
+                throw new ArgumentException("input does not appear to be a header");
+
+            name = input.Substring(0, split);
+            value = input.Substring(split + 1).TrimStart();
         }
 
         /// <summary>

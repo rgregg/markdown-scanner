@@ -57,6 +57,7 @@
     <Compile Include="ErrorDefinition.cs" />
     <Compile Include="ExampleDefinition.cs" />
     <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="Preprocessors\FrontMatterProcessor.cs" />
     <Compile Include="HttpLog\HttpLogGenerator.cs" />
     <Compile Include="Http\HttpParser.cs" />
     <Compile Include="Http\HttpRequest.cs" />
@@ -80,6 +81,7 @@
     <Compile Include="ParameterDataType.cs" />
     <Compile Include="ParameterDefinition.cs" />
     <Compile Include="Params\CSharpEval.cs" />
+    <Compile Include="Preprocessors\IMarkdownProcessor.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -164,4 +166,5 @@
       <Name>MarkdownDeep</Name>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup />
 </Project>
