@@ -356,13 +356,28 @@ namespace ApiDocs.Validation
         /// <param name="includeWarnings"></param>
         /// <param name="errors"></param>
         /// <returns></returns>
-        public bool ValidateLinks(bool includeWarnings, out ValidationError[] errors)
+        public bool ValidateLinks(bool includeWarnings, string[] relativePathForFiles, out ValidationError[] errors)
         {
             List<ValidationError> foundErrors = new List<ValidationError>();
 
             Dictionary<string, bool> orphanedPageIndex = this.Files.ToDictionary(x => this.RelativePathToFile(x, true), x => true);
 
-            foreach (var file in this.Files)
+            List<DocFile> filesToCheck = new List<Validation.DocFile>();
+            if (null == relativePathForFiles)
+            {
+                filesToCheck.AddRange(this.Files);
+            }
+            else
+            {
+                foreach(var relativePath in relativePathForFiles)
+                {
+                    var file = this.LookupFileForPath(relativePath);
+                    if (null != file)
+                        filesToCheck.Add(file);
+                }
+            }
+
+            foreach (var file in filesToCheck)
             {
                 ValidationError[] localErrors;
                 string [] linkedPages;
@@ -382,9 +397,13 @@ namespace ApiDocs.Validation
                 }
             }
 
-            foundErrors.AddRange(from o in orphanedPageIndex
-                                 where o.Value
-                                 select new ValidationWarning(ValidationErrorCode.OrphanedDocumentPage, null, "Page {0} has no incoming links.", o.Key));
+            if (relativePathForFiles == null)
+            {
+                // We only report orphan pages when scanning the whole docset.
+                foundErrors.AddRange(from o in orphanedPageIndex
+                                     where o.Value
+                                     select new ValidationWarning(ValidationErrorCode.OrphanedDocumentPage, null, "Page {0} has no incoming links.", o.Key));
+            }
 
             errors = foundErrors.ToArray();
             return !errors.WereWarningsOrErrors();
@@ -519,7 +538,7 @@ namespace ApiDocs.Validation
         }
 
 
-        internal DocFile LookupFileForPath(string path)
+        public DocFile LookupFileForPath(string path)
         {
             // Translate path into what we're looking for
             string[] pathComponents = path.Split('/', '\\');
@@ -532,10 +551,6 @@ namespace ApiDocs.Validation
 
             return query.FirstOrDefault();
         }
-        
-        
-
-
 
     }
 
