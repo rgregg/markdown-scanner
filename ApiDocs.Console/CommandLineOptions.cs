@@ -45,6 +45,7 @@ namespace ApiDocs.ConsoleApp
         public const string VerbMetadata = "check-metadata";
         public const string VerbAbout = "about";
         public const string VerbCheckAll = "check-all";
+        public const string VerbGenerateScenarios = "generate";
         
         [VerbOption(VerbPrint, HelpText="Print files, resources, and methods discovered in the documentation.")]
         public PrintOptions PrintVerbOptions { get; set; }
@@ -69,6 +70,9 @@ namespace ApiDocs.ConsoleApp
 
         [VerbOption(VerbAbout, HelpText="Print about information for this application.")]
         public BaseOptions AboutVerb { get; set; }
+
+        [VerbOption(VerbGenerateScenarios, HelpText="Generate new scenarios based on documentation placeholders.")]
+        public GenerateScenarioOptions GenerateScenariosVerb { get; set; }
 
         [HelpVerbOption]
         public string GetUsage(string verb)
@@ -195,26 +199,35 @@ namespace ApiDocs.ConsoleApp
         }
     }
 
-    class BasicCheckOptions : DocSetOptions
+    class GenerateScenarioOptions : FileOrMethodOptions
     {
-        [Option('m', "method", HelpText = "Name of the method to test. If omitted, all defined methods are tested.", MutuallyExclusiveSet="fileOrMethod")]
+        [Option("output", HelpText="The output filename for the generated scenario tests.", Required = true)]
+        public string OutputFilename { get; set; }
+    }
+
+    class FileOrMethodOptions : DocSetOptions
+    {
+        [Option('m', "method", HelpText = "Name of the method to test. If omitted, all defined methods are tested.", MutuallyExclusiveSet = "fileOrMethod")]
         public string MethodName { get; set; }
 
-        [Option("file", HelpText="Name of the files to test. Wildcard(*) is allowed. If missing, methods across all files are tested.", MutuallyExclusiveSet="fileOrMethod")]
+        [Option("file", HelpText = "Name of the files to test. Wildcard(*) is allowed. If missing, methods across all files are tested.", MutuallyExclusiveSet = "fileOrMethod")]
         public string FileName { get; set; }
+
+        [Option("changes-since-branch-only", HelpText = "Only perform validation on files changed since the specified branch.")]
+        public string FilesChangedFromOriginalBranch { get; set; }
+
+        [Option("git-path", HelpText = "Path to the git executable. Required for changes-since-branch-only.")]
+        public string GitExecutablePath { get; set; }
+    }
+
+    class BasicCheckOptions : FileOrMethodOptions
+    {
 
         [Option("force-all", HelpText="Force all defined scenarios to be executed, even if disabled.")]
         public bool ForceAllScenarios { get; set; }
 
         [Option("relax-string-validation", HelpText = "Relax the validation of JSON string properties.")]
         public bool RelaxStringTypeValidation { get; set; }
-
-        [Option("changes-since-branch-only", HelpText="Only perform validation on files changed since the specified branch.")]
-        public string FilesChangedFromOriginalBranch { get; set; }
-
-        [Option("git-path", HelpText="Path to the git executable. Required for changes-since-branch-only.")]
-        public string GitExecutablePath { get; set; }
-
     }
 
     class CheckServiceOptions : BasicCheckOptions

@@ -33,12 +33,13 @@ namespace ApiDocs.Validation
 
     public class ScenarioFile : ConfigFile
     {
-        [JsonProperty("scenarios")]
+        [JsonProperty("scenarios", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public ScenarioDefinition[] Scenarios { get; set; }
 
-        [JsonProperty("canned-requests")]
+        [JsonProperty("canned-requests", DefaultValueHandling = DefaultValueHandling.Ignore)]
         public CannedRequestDefinition[] CannedRequests { get; set; }
 
+        [JsonIgnore]
         public override bool IsValid
         {
             get
