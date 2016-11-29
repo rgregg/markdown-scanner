@@ -25,9 +25,14 @@
 
 namespace ApiDocs.Validation.Config
 {
+    using Newtonsoft.Json;
+
     public abstract class ConfigFile
     {
+        [JsonIgnore]
         public abstract bool IsValid { get; }
+
+        [JsonIgnore]
         public string SourcePath {get;set;}
     }
 }
