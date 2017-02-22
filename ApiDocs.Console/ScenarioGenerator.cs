@@ -49,6 +49,13 @@ namespace ApiDocs.ConsoleApp
             {
                 if (string.IsNullOrEmpty(method.Identifier))
                     continue;
+                if (method.Scenarios.Any())
+                {
+                    FancyConsole.WriteLine($"Skipping method: {method.Identifier}");
+                    continue;
+                }
+
+                FancyConsole.WriteLine($"Generating scenario for method: {method.Identifier}");
 
                 ScenarioDefinition def = new ScenarioDefinition();
                 def.MethodName = method.Identifier;

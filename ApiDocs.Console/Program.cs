@@ -1357,11 +1357,11 @@ namespace ApiDocs.ConsoleApp
 
             var methods = FindTestMethods(options, docset);
 
-            var methodsWithoutScenarios = from m in methods
-                                          where !m.Scenarios.Any()
-                                          select m;
+            //var methodsWithoutScenarios = from m in methods
+            //                              where !m.Scenarios.Any()
+            //                              select m;
 
-            await ScenarioGenerator.Generate(methodsWithoutScenarios, options.OutputFilename, docset);
+            await ScenarioGenerator.Generate(methods, options.OutputFilename, docset);
 
             return true;
         }

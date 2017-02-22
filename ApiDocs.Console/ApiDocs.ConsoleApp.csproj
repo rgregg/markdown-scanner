@@ -85,6 +85,7 @@
     <Compile Include="TestReport.cs" />
     <Compile Include="AppConfigFile.cs" />
     <Compile Include="WildcardExtensions.cs" />
+    <Compile Include="ScenarioGenerator.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
