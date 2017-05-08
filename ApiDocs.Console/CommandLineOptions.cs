@@ -30,6 +30,7 @@ namespace ApiDocs.ConsoleApp
     using System.Linq;
     using ApiDocs.ConsoleApp.Auth;
     using ApiDocs.Validation;
+    using Validation.Config;
     using ApiDocs.Validation.Writers;
     using CommandLine;
     using CommandLine.Text;
@@ -47,7 +48,8 @@ namespace ApiDocs.ConsoleApp
         public const string VerbAbout = "about";
         public const string VerbCheckAll = "check-all";
         public const string VerbPublishMetadata = "publish-edmx";
-        
+        public const string VerbTestWithConfig = "use-config";
+
         [VerbOption(VerbPrint, HelpText="Print files, resources, and methods discovered in the documentation.")]
         public PrintOptions PrintVerbOptions { get; set; }
 
@@ -59,6 +61,9 @@ namespace ApiDocs.ConsoleApp
 
         [VerbOption(VerbCheckAll, HelpText = "Check for errors in the documentation (links + resources + examples)")]
         public BasicCheckOptions CheckAllVerbs { get; set; }
+
+        [VerbOption(VerbTestWithConfig, HelpText="Check for errors in the documentation using a configuration files")]
+        public CheckWithConfigOptions CheckConfigFileVerb { get; set; }
 
         [VerbOption(VerbService, HelpText = "Check for errors between the documentation and service.")]
         public CheckServiceOptions CheckServiceVerb { get; set; }
@@ -85,7 +90,22 @@ namespace ApiDocs.ConsoleApp
     class BaseOptions
     {
 
-        [Option("log", HelpText="Write the console output to file.")]
+#if DEBUG
+        [Option("debug", HelpText="Launch the debugger before doing anything interesting")]
+        public bool AttachDebugger { get; set; }
+#endif
+
+        public virtual bool HasRequiredProperties(out string[] missingArguments)
+        {
+            missingArguments = new string[0];
+            return true;
+        }
+
+    }
+
+    class CommandLineBaseOptions : BaseOptions
+    {
+        [Option("log", HelpText = "Write the console output to file.")]
         public string LogFile { get; set; }
 
         [Option("ignore-warnings", HelpText = "Ignore warnings as errors for pass rate.")]
@@ -94,10 +114,10 @@ namespace ApiDocs.ConsoleApp
         [Option("silence-warnings", HelpText = "Don't print warnings to the screen or consider them errors")]
         public bool SilenceWarnings { get; set; }
 
-        [Option("appveyor-url", HelpText="Specify the AppVeyor Build Worker API URL for output integration")]
+        [Option("appveyor-url", HelpText = "Specify the AppVeyor Build Worker API URL for output integration")]
         public string AppVeyorServiceUrl { get; set; }
 
-        [Option("ignore-errors", HelpText="Prevent errors from generating a non-zero return code.")]
+        [Option("ignore-errors", HelpText = "Prevent errors from generating a non-zero return code.")]
         public bool IgnoreErrors { get; set; }
 
         [Option("parameters", HelpText = "Specify additional page variables that are used by the publishing engine. URL encoded: key=value&key2=value2.")]
@@ -106,9 +126,8 @@ namespace ApiDocs.ConsoleApp
         [Option("print-failures-only", HelpText = "Only prints test failures to the console.")]
         public bool PrintFailuresOnly { get; set; }
 
-
-
-        public Dictionary<string, string> PageParameterDict {
+        public Dictionary<string, string> PageParameterDict
+        {
             get
             {
                 if (string.IsNullOrEmpty(AdditionalPageParameters))
@@ -125,22 +144,50 @@ namespace ApiDocs.ConsoleApp
             }
         }
 
-#if DEBUG
-        [Option("debug", HelpText="Launch the debugger before doing anything interesting")]
-        public bool AttachDebugger { get; set; }
-#endif
 
-        public virtual bool HasRequiredProperties(out string[] missingArguments)
+        /// <summary>
+        /// Convert command line parameters into the parameters for our validator
+        /// </summary>
+        /// <returns></returns>
+        internal virtual Validation.Config.ApiDocsParameters GetParameters()
         {
-            missingArguments = new string[0];
-            return true;
+            var config = new Validation.Config.ApiDocsParameters();
+            config.Reporting = new ReportingParameters();
+            config.Reporting.Console = new Validation.Config.ReportingEngineParameters() { Path = LogFile };
+            config.Severity = new Validation.Config.SeverityParameters();
+            if (IgnoreWarnings)
+            {
+                config.Severity.Warnings = Validation.Config.SeverityLevel.Ignored;
+            }
+            if (IgnoreErrors)
+            {
+                config.Severity.Errors = Validation.Config.SeverityLevel.Ignored;
+            }
+
+            if (!string.IsNullOrEmpty(AppVeyorServiceUrl))
+            {
+                config.Reporting.Appveyor = new Validation.Config.ReportingEngineParameters()
+                {
+                    Url = AppVeyorServiceUrl
+                };
+            }
+            if (!string.IsNullOrEmpty(AdditionalPageParameters))
+            {
+                config.PageParameters = PageParameterDict;
+            }
+            if (PrintFailuresOnly)
+            {
+                config.Reporting.Console.Level = Validation.Config.LogLevel.ErrorsOnly;
+            }
+
+            return config;
         }
     }
 
     /// <summary>
     /// Command line options for any verbs that work with a documentation set.
     /// </summary>
-    class DocSetOptions : BaseOptions
+    class DocSetOptions : CommandLineBaseOptions
     {
         internal const string PathArgument = "path";
         internal const string VerboseArgument = "verbose";
@@ -167,6 +214,37 @@ namespace ApiDocs.ConsoleApp
             missingArguments = new string[0];
             return true;
         }
+
+        internal override ApiDocsParameters GetParameters()
+        {
+            var config = base.GetParameters();
+            if (EnableVerboseOutput)
+            {
+                config.Reporting.Console.Level = LogLevel.Verbose;
+            }
+            return config;
+        }
+    }
+
+    class CheckWithConfigOptions : BaseOptions
+    {
+        [Option("file", HelpText = "Path to the configuration file that should be used.")]
+        public string ConfigurationFile { get; set; }
+
+        [Option("set", HelpText="Run only the specified set from the configuration files")]
+        public string ChosenSet { get; set; }
+
+        public override bool HasRequiredProperties(out string[] missingArguments)
+        {
+            if (string.IsNullOrEmpty(ConfigurationFile))
+            {
+                missingArguments = new string[] { "config" };
+                return false;
+            };
+
+            missingArguments = null;
+            return true;
+        }
     }
 
     class CheckMetadataOptions : DocSetOptions
@@ -174,6 +252,18 @@ namespace ApiDocs.ConsoleApp
         [Option("metadata", HelpText = "Path or URL for the service metadata CSDL")]
         public string ServiceMetadataLocation { get; set; }
 
+
+        internal override ApiDocsParameters GetParameters()
+        {
+            var config = base.GetParameters();
+
+            config.CheckMetadataParameters = new CheckMetadataActionParameters
+            {
+                SchemaUrls = new string[] { ServiceMetadataLocation }
+            };
+
+            return config;
+        }
     }
 
     class PrintOptions : DocSetOptions
@@ -229,6 +319,44 @@ namespace ApiDocs.ConsoleApp
 
         [Option("link-case-match", HelpText = "Require the CaSe of relative links within the content to match the filenames.")]
         public bool RequireFilenameCaseMatch { get; set; }
+
+        internal override ApiDocsParameters GetParameters()
+        {
+            var config = base.GetParameters();
+            config.SharedActionParameters = new SharedActionParameters();
+            if (!string.IsNullOrEmpty(MethodName))
+            {
+                config.SharedActionParameters.MethodFilter = MethodName;
+            }
+            if (!string.IsNullOrEmpty(FileName))
+            {
+                config.SharedActionParameters.FilenameFilter = FileName;
+            }
+            if (ForceAllScenarios)
+            {
+                config.SharedActionParameters.RunAllScenarios = true;
+            }
+            if (RelaxStringTypeValidation)
+            {
+                config.SharedActionParameters.RelaxStringValidation = true;
+            }
+            if (!string.IsNullOrEmpty(FilesChangedFromOriginalBranch))
+            {
+                config.PullRequests = config.PullRequests ?? new PullRequestParameters();
+                config.PullRequests.TargetBranch = FilesChangedFromOriginalBranch;
+            }
+            if (!string.IsNullOrEmpty(GitExecutablePath))
+            {
+                config.GitExecutablePath = GitExecutablePath;
+            }
+            if (RequireFilenameCaseMatch)
+            {
+                config.CheckLinksParameters = config.CheckLinksParameters ?? new CheckLinksActionParameters();
+                config.CheckLinksParameters.LinksAreCaseSensitive = RequireFilenameCaseMatch;
+            }
+
+            return config;
+        }
     }
 
     class CheckServiceOptions : BasicCheckOptions
@@ -375,6 +503,38 @@ namespace ApiDocs.ConsoleApp
 
             missingArguments = props.ToArray();
             return missingArguments.Length == 0;
+        }
+
+        internal override ApiDocsParameters GetParameters()
+        {
+            var config = base.GetParameters();
+
+            config.CheckServiceParameters = new CheckServiceActionParameters();
+            if (!string.IsNullOrEmpty(AccountName))
+            {
+                config.CheckServiceParameters.Accounts = new string[] { AccountName };
+            }
+            if (PauseBetweenRequests)
+            {
+                config.CheckServiceParameters.PauseBetweenRequests = PauseBetweenRequests;
+            }
+            if (!string.IsNullOrEmpty(AdditionalHeaders))
+            {
+                config.CheckServiceParameters.AdditionalHeaders = AdditionalHeaders.Split(new char[] { '|' }, StringSplitOptions.RemoveEmptyEntries);
+            }
+            if (!string.IsNullOrEmpty(ODataMetadataLevel))
+            {
+                config.CheckServiceParameters.MetadataLevel = ODataMetadataLevel;
+            }
+            if (!string.IsNullOrEmpty(BranchName))
+            {
+                config.CheckServiceParameters.BranchName = BranchName;
+            }
+            if (ParallelTests)
+            {
+                config.CheckServiceParameters.RunTestsInParallel = ParallelTests;
+            }
+            return config;
         }
 
     }

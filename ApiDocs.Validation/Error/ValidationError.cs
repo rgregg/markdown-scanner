@@ -115,7 +115,8 @@ namespace ApiDocs.Validation.Error
         RequiredScopesMissing,
         AnnotationParserException,
         DuplicateMethodIdentifier,
-        ContentFormatException
+        ContentFormatException,
+        NoMatchingMethods
     }
 
     public class ValidationError
@@ -172,14 +173,14 @@ namespace ApiDocs.Validation.Error
             get 
             {
                 StringBuilder sb = new StringBuilder();
-                if (this.IsWarning)
-                {
-                    sb.Append("Warning: ");
-                }
-                else if (this.IsError)
-                {
-                    sb.Append("Error: ");
-                }
+                //if (this.IsWarning)
+                //{
+                //    sb.Append("Warning: ");
+                //}
+                //else if (this.IsError)
+                //{
+                //    sb.Append("Error: ");
+                //}
                 
                 if (!string.IsNullOrEmpty(this.Source))
                 {

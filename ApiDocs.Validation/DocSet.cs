@@ -177,39 +177,61 @@ namespace ApiDocs.Validation
         {
             List<T> validConfigurationFiles = new List<T>();
 
-            DirectoryInfo docSetDir = new DirectoryInfo(path);
-            if (!docSetDir.Exists)
-                return new T[0];
-
-            var jsonFiles = docSetDir.GetFiles("*.json", SearchOption.AllDirectories);
-            foreach (var file in jsonFiles)
+            if (File.Exists(path))
             {
-                try
+                var configFile = LoadConfigFile<T>(new FileInfo(path));
+                if (null != configFile)
                 {
-                    using (var reader = file.OpenText())
+                    validConfigurationFiles.Add(configFile);
+                }
+                else
+                {
+                    Logging.LogMessage(new ValidationWarning(ValidationErrorCode.JsonParserException, path, "Unable to read the configuration file specified."));
+                }
+            }
+            else if (Directory.Exists(path))
+            {
+                DirectoryInfo docSetDir = new DirectoryInfo(path);
+                var jsonFiles = docSetDir.GetFiles("*.json", SearchOption.AllDirectories);
+                foreach (var file in jsonFiles)
+                {
+                    var configFile = LoadConfigFile<T>(file);
+                    if (null != configFile)
                     {
-                        var config = JsonConvert.DeserializeObject<T>(reader.ReadToEnd());
-                        if (null != config && config.IsValid)
-                        {
-                            config.LoadComplete();
-                            validConfigurationFiles.Add(config);
-                            config.SourcePath = file.FullName;
-                        }
+                        validConfigurationFiles.Add(configFile);
                     }
                 }
-                catch (JsonException ex)
-                {
-                    Logging.LogMessage(new ValidationWarning(ValidationErrorCode.JsonParserException, file.FullName, "JSON parser error: {0}", ex.Message));
-                }
-                catch (Exception ex)
-                {
-                    Logging.LogMessage(new ValidationWarning(ValidationErrorCode.JsonParserException, file.FullName, "Exception reading file: {0}", ex.Message));
-                }
-
             }
 
             return validConfigurationFiles.ToArray();
         }
+
+        private static T LoadConfigFile<T>(FileInfo file) where T : ConfigFile
+        {
+            try
+            {
+                using (var reader = file.OpenText())
+                {
+                    var config = JsonConvert.DeserializeObject<T>(reader.ReadToEnd());
+                    if (null != config && config.IsValid)
+                    {
+                        config.LoadComplete();
+                        config.SourcePath = file.FullName;
+                        return config;
+                    }
+                }
+            }
+            catch (JsonException ex)
+            {
+                Logging.LogMessage(new ValidationWarning(ValidationErrorCode.JsonParserException, file.FullName, "JSON parser error: {0}", ex.Message));
+            }
+            catch (Exception ex)
+            {
+                Logging.LogMessage(new ValidationWarning(ValidationErrorCode.JsonParserException, file.FullName, "Exception reading file: {0}", ex.Message));
+            }
+            return null;
+        }
+
 
         public static string ResolvePathWithUserRoot(string path)
         {

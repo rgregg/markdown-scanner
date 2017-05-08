@@ -42,7 +42,7 @@ namespace ApiDocs.ConsoleApp
     using Validation.Writers;
     using CommandLine;
     using Newtonsoft.Json;
-
+    using Validation.Config;
 
     class Program
     {
@@ -52,9 +52,6 @@ namespace ApiDocs.ConsoleApp
 
         public static readonly BuildWorkerApi BuildWorker = new BuildWorkerApi();
         public static AppConfigFile CurrentConfiguration { get; private set; }
-
-        // Set to true to disable returning an error code when the app exits.
-        private static bool IgnoreErrors { get; set; }
 
         private static List<UndocumentedPropertyWarning> DiscoveredUndocumentedProperties = new List<UndocumentedPropertyWarning>();
 
@@ -84,7 +81,6 @@ namespace ApiDocs.ConsoleApp
                 Exit(failure: true);
             }
 
-            IgnoreErrors = verbOptions.IgnoreErrors;
 #if DEBUG
             if (verbOptions.AttachDebugger)
             {
@@ -106,8 +102,14 @@ namespace ApiDocs.ConsoleApp
             }
         }
 
-        private static void SetStateFromOptions(BaseOptions verbOptions)
+        private static void SetStateFromOptions(BaseOptions options)
         {
+            CommandLineBaseOptions verbOptions = options as CommandLineBaseOptions;
+            if (null == verbOptions)
+            {
+                return;
+            }
+
             if (!string.IsNullOrEmpty(verbOptions.AppVeyorServiceUrl))
             {
                 BuildWorker.UrlEndPoint = new Uri(verbOptions.AppVeyorServiceUrl);
@@ -166,13 +168,13 @@ namespace ApiDocs.ConsoleApp
             {
                 var error = new ValidationError(ValidationErrorCode.MissingRequiredArguments, null, "Command line is missing required arguments: {0}", missingProps.ComponentsJoinedByString(", "));
                 FancyConsole.WriteLine(origCommandLineOpts.GetUsage(invokedVerb));
-                await WriteOutErrorsAndFinishTestAsync(new ValidationError[] { error }, options.SilenceWarnings, printFailuresOnly: options.PrintFailuresOnly);
+                await WriteOutErrorsAndFinishTestAsync(new ValidationError[] { error }, false);
                 Exit(failure: true);
             }
 
             LoadCurrentConfiguration(options as DocSetOptions);
 
-            bool returnSuccess = true;
+            Validation.Logger.TestResult result = Validation.Logger.TestResult.NotStarted;
 
             switch (invokedVerb)
             {
@@ -180,23 +182,26 @@ namespace ApiDocs.ConsoleApp
                     await PrintDocInformationAsync((PrintOptions)options);
                     break;
                 case CommandLineOptions.VerbCheckLinks:
-                    returnSuccess = await CheckLinksAsync((BasicCheckOptions)options);
+                    result = await CheckLinksAsync((BasicCheckOptions)options);
                     break;
                 case CommandLineOptions.VerbDocs:
-                    returnSuccess = await CheckDocsAsync((BasicCheckOptions)options);
+                    result = await CheckDocsAsync((BasicCheckOptions)options);
                     break;
                 case CommandLineOptions.VerbCheckAll:
-                    returnSuccess = await CheckDocsAllAsync((BasicCheckOptions)options);
+                    result = await CheckDocsAllAsync((BasicCheckOptions)options);
                     break;
-                case CommandLineOptions.VerbService:
-                    returnSuccess = await CheckServiceAsync((CheckServiceOptions)options);
+                case CommandLineOptions.VerbTestWithConfig:
+                    result = await CheckWithConfigOptionsAsync((CheckWithConfigOptions)options);
                     break;
-                case CommandLineOptions.VerbPublish:
-                    returnSuccess = await PublishDocumentationAsync((PublishOptions)options);
-                    break;
-                case CommandLineOptions.VerbPublishMetadata:
-                    returnSuccess = await PublishMetadataAsync((PublishMetadataOptions)options);
-                    break;
+                //case CommandLineOptions.VerbService:
+                //    result = await CheckServiceAsync((CheckServiceOptions)options);
+                //    break;
+                //case CommandLineOptions.VerbPublish:
+                //    result = await PublishDocumentationAsync((PublishOptions)options);
+                //    break;
+                //case CommandLineOptions.VerbPublishMetadata:
+                //    result = await PublishMetadataAsync((PublishMetadataOptions)options);
+                //    break;
                 case CommandLineOptions.VerbMetadata:
                     await CheckServiceMetadataAsync((CheckMetadataOptions)options);
                     break;
@@ -206,7 +211,64 @@ namespace ApiDocs.ConsoleApp
                     break;
             }
 
-            Exit(failure: !returnSuccess);
+            Exit(result);
+        }
+
+        /// <summary>
+        /// Load the configuration file and perform the requested validations
+        /// </summary>
+        /// <param name="options"></param>
+        /// <returns></returns>
+        private static async Task<Validation.Logger.TestResult> CheckWithConfigOptionsAsync(CheckWithConfigOptions options)
+        {
+           var config = DocSet.TryLoadConfigurationFiles<Validation.Config.SetsConfigFile>(options.ConfigurationFile).FirstOrDefault();
+            if (null == config)
+            {
+                return Validation.Logger.TestResult.NothingToTest;
+            }
+
+            Console.WriteLine($"Found {config.Sets.Count} sets in the configuration file.");
+
+            Validation.Logger.TestResult overallResults = Validation.Logger.TestResult.Running;
+
+            foreach(var set in config.Sets)
+            {
+                // Skip the set if a chosen set was specified and this isn't it
+                if (options.ChosenSet != null && !options.ChosenSet.Equals(set.Key, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                Validation.Config.DocSetConfiguration setParams = set.Value;
+                setParams.Name = set.Key;
+
+                // Load the docs for this set
+                DocSet docs = new DocSet(setParams.RelativePath);
+                ValidationError[] detectedErrors = null;
+                await Task.Run(() => { docs.ScanDocumentation("", out detectedErrors); });
+
+                Validation.Logger.TestResult results = Validation.Logger.TestResult.Running;
+
+                // Execute the specified actions
+                if (setParams.Actions.CheckLinks != null)
+                {
+                    var linkResults = await CheckLinksAsync(docs, config.DefaultParameters);
+                    results = (new Validation.Logger.TestResult[] { linkResults, results }).Min();
+                }
+
+                if (setParams.Actions.CheckDocs != null)
+                {
+                    var docResults = await CheckDocsAsync(docs, config.DefaultParameters);
+                    results = (new Validation.Logger.TestResult[] { docResults, results }).Min();
+                }
+
+                Console.WriteLine($"Set {setParams.Name} has completed. Overall results: {results}.");
+
+                overallResults = (new Validation.Logger.TestResult[] { overallResults, results }).Min();
+            }
+
+            Console.WriteLine($"Tests are finished. Overall result: {overallResults}.");
+            return overallResults;
         }
 
         /// <summary>
@@ -216,17 +278,19 @@ namespace ApiDocs.ConsoleApp
         /// </summary>
         /// <param name="options"></param>
         /// <returns></returns>
-        private static async Task<bool> CheckDocsAllAsync(BasicCheckOptions options)
+        private static async Task<Validation.Logger.TestResult> CheckDocsAllAsync(BasicCheckOptions options)
         {
             var docset = await GetDocSetAsync(options);
 
             if (null == docset)
-                return false;
+            {
+                return Validation.Logger.TestResult.NothingToTest;
+            }
 
             var checkLinksResult = await CheckLinksAsync(options, docset);
             var checkDocsResults = await CheckDocsAsync(options, docset);
 
-            return checkLinksResult && checkDocsResults;
+            return (Validation.Logger.TestResult)Math.Min((int)checkLinksResult, (int)checkDocsResults);
         }
 
         private static void PrintAboutMessage()
@@ -464,58 +528,29 @@ namespace ApiDocs.ConsoleApp
         /// </summary>
         /// <param name="options"></param>
         /// <param name="docs"></param>
-        private static async Task<bool> CheckLinksAsync(BasicCheckOptions options, DocSet docs = null)
+        private static async Task<Validation.Logger.TestResult> CheckLinksAsync(BasicCheckOptions options, DocSet docs = null)
         {
-            const string testName = "Check-links";
             var docset = docs ?? await GetDocSetAsync(options);
-
             if (null == docset)
-                return false;
-
-
-            string[] interestingFiles = null;
-            if (!string.IsNullOrEmpty(options.FilesChangedFromOriginalBranch))
             {
-                GitHelper helper = new GitHelper(options.GitExecutablePath, options.DocumentationSetPath);
-                interestingFiles = helper.FilesChangedFromBranch(options.FilesChangedFromOriginalBranch);
+                return Validation.Logger.TestResult.NothingToTest;
             }
 
-            TestReport.StartTest(testName);
-            
-            ValidationError[] errors;
-            docset.ValidateLinks(options.EnableVerboseOutput, interestingFiles, out errors, options.RequireFilenameCaseMatch);
-
-            foreach (var error in errors)
-            {
-                MessageCategory category;
-                if (error.IsWarning)
-                    category = MessageCategory.Warning;
-                else if (error.IsError)
-                    category = MessageCategory.Error;
-                else
-                    category = MessageCategory.Information;
-
-                string message = string.Format("{1}: {0}", error.Message.FirstLineOnly(), error.Code);
-                await TestReport.LogMessageAsync(message, category);
-            }
-
-            return await WriteOutErrorsAndFinishTestAsync(errors, options.SilenceWarnings, successMessage: "No link errors detected.", testName: testName, printFailuresOnly: options.PrintFailuresOnly);
+            var parameters = options.GetParameters();
+            return await CheckLinksAsync(docset, parameters);
         }
 
-        /// <summary>
-        /// Find the first instance of a method with a particular name in the docset.
-        /// </summary>
-        /// <param name="docset"></param>
-        /// <param name="methodName"></param>
-        /// <returns></returns>
-        private static MethodDefinition LookUpMethod(DocSet docset, string methodName)
+        private static async Task<Validation.Logger.TestResult> CheckLinksAsync(DocSet docset, Validation.Config.ApiDocsParameters parameters)
         {
-            var query = from m in docset.Methods
-                        where m.Identifier.Equals(methodName, StringComparison.OrdinalIgnoreCase)
-                        select m;
+            if (null == docset) throw new ArgumentNullException(nameof(docset));
 
-            return query.FirstOrDefault();
+            var tester = new Validation.Logger.TestEngine(parameters, docset.SourceFolderPath);
+            var result = await ValidationProcessor.CheckLinksAsync(parameters, docset, tester);
+            await tester.CompleteAsync();
+
+            return result;
         }
+
 
         /// <summary>
         /// Returns a collection of methods matching the string query. This can either be the
@@ -540,160 +575,29 @@ namespace ApiDocs.ConsoleApp
         /// <param name="options"></param>
         /// <param name="docs"></param>
         /// <returns></returns>
-        private static async Task<bool> CheckDocsAsync(BasicCheckOptions options, DocSet docs = null)
+        private static async Task<Validation.Logger.TestResult> CheckDocsAsync(BasicCheckOptions options, DocSet docs = null)
         {
             var docset = docs ?? await GetDocSetAsync(options);
+
             if (null == docset)
-                return false;
-
-            FancyConsole.WriteLine();
-
-            var resultStructure = await CheckDocStructure(options, docset);
-
-            var resultMethods = await CheckMethodsAsync(options, docset);
-            CheckResults resultExamples = new CheckResults();
-            if (string.IsNullOrEmpty(options.MethodName))
             {
-                resultExamples = await CheckExamplesAsync(options, docset);
+                return Validation.Logger.TestResult.NothingToTest;
             }
 
-            var combinedResults = resultMethods + resultExamples + resultStructure;
-
-            if (options.IgnoreWarnings)
-            {
-                combinedResults.ConvertWarningsToSuccess();
-            }
-
-            combinedResults.PrintToConsole();
-
-            return combinedResults.FailureCount == 0;
+            var parameters = options.GetParameters();
+            return await CheckDocsAsync(docset, parameters);
         }
 
-        private static async Task<CheckResults> CheckDocStructure(BasicCheckOptions options, DocSet docset)
+        private async static Task<Validation.Logger.TestResult> CheckDocsAsync(DocSet docs, ApiDocsParameters parameters)
         {
-            var results = new CheckResults();
+            if (null == docs) throw new ArgumentNullException(nameof(docs));
 
-            TestReport.StartTest("Verify document structure");
-            List<ValidationError> detectedErrors = new List<ValidationError>();
-            foreach (var doc in docset.Files)
-            {
-                detectedErrors.AddRange(doc.CheckDocumentStructure());
-            }
-            await WriteOutErrorsAndFinishTestAsync(detectedErrors, options.SilenceWarnings, "    ", "Passed.", false, "Verify document structure", "Warnings detected", "Errors detected", printFailuresOnly: options.PrintFailuresOnly);
-            results.IncrementResultCount(detectedErrors);
-
-            return results;
+            var tester = new Validation.Logger.TestEngine(parameters, docs.SourceFolderPath);
+            var result = await ValidationProcessor.CheckDocsAsync(parameters, docs, tester);
+            await tester.CompleteAsync();
+            return result;
         }
 
-        /// <summary>
-        /// Perform an internal consistency check on the examples defined in the documentation. Prints
-        /// the results of the tests to the console.
-        /// </summary>
-        /// <param name="options"></param>
-        /// <param name="docset"></param>
-        /// <returns></returns>
-        private static async Task<CheckResults> CheckExamplesAsync(BasicCheckOptions options, DocSet docset)
-        {
-            var results = new CheckResults();
-
-            foreach (var doc in docset.Files)
-            {
-                if (doc.Examples.Length == 0)
-                {
-                    continue;
-                }
-                
-                FancyConsole.WriteLine(FancyConsole.ConsoleHeaderColor, "Checking examples in \"{0}\"...", doc.DisplayName);
-
-                foreach (var example in doc.Examples)
-                {
-                    if (example.Metadata == null)
-                        continue;
-                    if (example.Language != CodeLanguage.Json)
-                        continue;
-
-                    var testName = string.Format("check-example: {0}", example.Metadata.MethodName, example.Metadata.ResourceType);
-                    TestReport.StartTest(testName, doc.DisplayName);
-
-                    ValidationError[] errors;
-                    docset.ResourceCollection.ValidateJsonExample(example.Metadata, example.SourceExample, out errors, new ValidationOptions { RelaxedStringValidation = options.RelaxStringTypeValidation });
-
-                    await WriteOutErrorsAndFinishTestAsync(errors, options.SilenceWarnings, "   ", "Passed.", false, testName, "Warnings detected", "Errors detected", printFailuresOnly: options.PrintFailuresOnly);
-                    results.IncrementResultCount(errors);
-                }
-            }
-
-            return results;
-        }
-
-        /// <summary>
-        /// Performs an internal consistency check on the methods (requests/responses) in the documentation.
-        /// Prints the results of the tests to the console.
-        /// </summary>
-        /// <param name="options"></param>
-        /// <param name="docset"></param>
-        /// <returns></returns>
-        private static async Task<CheckResults> CheckMethodsAsync(BasicCheckOptions options, DocSet docset)
-        {
-            MethodDefinition[] methods = FindTestMethods(options, docset);
-            CheckResults results = new CheckResults();
-
-            foreach (var method in methods)
-            {
-                var testName = "API Request: " + method.Identifier;
-                
-                TestReport.StartTest(testName, method.SourceFile.DisplayName, skipPrintingHeader: options.PrintFailuresOnly);
-
-                if (string.IsNullOrEmpty(method.ExpectedResponse))
-                {
-                    await TestReport.FinishTestAsync(testName, TestOutcome.Failed, "Null response where one was expected.", printFailuresOnly: options.PrintFailuresOnly);
-                    results.FailureCount++;
-                    continue;
-                }
-
-                var parser = new HttpParser();
-
-
-                ValidationError[] errors;
-                try
-                {
-                    var expectedResponse = parser.ParseHttpResponse(method.ExpectedResponse);
-                    
-                    method.ValidateResponse(expectedResponse, null, null, out errors, new ValidationOptions { RelaxedStringValidation = options.RelaxStringTypeValidation });
-                }
-                catch (Exception ex)
-                {
-                    errors = new ValidationError[] { new ValidationError(ValidationErrorCode.ExceptionWhileValidatingMethod, method.SourceFile.DisplayName, ex.Message) };
-                }
-
-                await WriteOutErrorsAndFinishTestAsync(errors, options.SilenceWarnings, "   ", "Passed.", false, testName, "Warnings detected", "Errors detected", printFailuresOnly: options.PrintFailuresOnly);
-                results.IncrementResultCount(errors);
-            }
-
-            return results;
-        }
-
-        private static DocFile[] GetSelectedFiles(BasicCheckOptions options, DocSet docset)
-        {
-            List<DocFile> files = new List<DocFile>();
-            if (!string.IsNullOrEmpty(options.FilesChangedFromOriginalBranch))
-            {
-                GitHelper helper = new GitHelper(options.GitExecutablePath, options.DocumentationSetPath);
-                var changedFiles = helper.FilesChangedFromBranch(options.FilesChangedFromOriginalBranch);
-                
-                foreach (var filePath in changedFiles)
-                {
-                    var file = docset.LookupFileForPath(filePath);
-                    if (null != file)
-                        files.Add(file);
-                }
-            }
-            else
-            {
-                files.AddRange(docset.Files);
-            }
-            return files.ToArray();
-        }
 
         /// <summary>
         /// Parse the command line parameters into a set of methods that match the command line parameters.
@@ -916,8 +820,6 @@ namespace ApiDocs.ConsoleApp
         /// that the actual requests come from the service instead of the documentation. Prints the errors to 
         /// the console.
         /// </summary>
-        /// <param name="options"></param>
-        /// <returns></returns>
         private static async Task<bool> CheckServiceAsync(CheckServiceOptions options)
         {
             // See if we're supposed to run check-service on this branch (assuming we know what branch we're running on)
@@ -1202,18 +1104,30 @@ namespace ApiDocs.ConsoleApp
             }
         }
 
+        public static void Exit(Validation.Logger.TestResult result)
+        {
+            switch(result)
+            {
+                case Validation.Logger.TestResult.Passed:
+                case Validation.Logger.TestResult.PassedWithWarnings:
+                    Exit(failure: false);
+                    break;
+                case Validation.Logger.TestResult.Failed:
+                    Exit(failure: true);
+                    break;
+                case Validation.Logger.TestResult.NothingToTest:
+                case Validation.Logger.TestResult.NotStarted:
+                    Exit(failure: true, customExitCode: 99);
+                    break;
+            }
+        }
+
         private static void Exit(bool failure, int? customExitCode = null)
         {
             int exitCode = failure ? ExitCodeFailure : ExitCodeSuccess;
             if (customExitCode.HasValue)
             {
                 exitCode = customExitCode.Value;
-            }
-
-            if (IgnoreErrors)
-            {
-                FancyConsole.WriteLine("Ignoring errors and returning a successful exit code.");
-                exitCode = ExitCodeSuccess;
             }
 
 #if DEBUG

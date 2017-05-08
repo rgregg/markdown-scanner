@@ -130,7 +130,7 @@ namespace ApiDocs.Validation
         {
             if (this.ExpectedResponse != null)
             {
-                throw new InvalidOperationException("An expected response was already added to this request.");
+                throw new MethodDuplicationException("An expected response was already added to this request.");
             }
 
             this.ExpectedResponse = rawResponse;

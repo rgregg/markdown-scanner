@@ -1,0 +1,86 @@
+{
+    /* define the documentation sets contains in this repo */
+    "sets": {
+        "all-content": {
+            "path": "/",
+            "actions": {
+                "check-links": { }
+            }
+        },
+        "v1.0-reference": {
+            "path": "/api-reference/v1.0",
+            "actions": {
+                "check-docs": { },
+                "check-service": {
+                    "accounts": [ "MSGraphProd", "MSGraphBeta", "MSGraphPPE" ]
+                    },
+                "check-metadata": {
+                    "schema-urls": [ "https://graph.microsoft.com/v1.0/$metadata" ]
+                 }
+            }
+        },
+        "beta-reference": {
+            "path": "/api-reference/beta",
+            "actions": {
+                "check-docs": {}
+            }
+        },
+        "publish-docs": {
+            "path": "/",
+            "actions": {
+                "publish": {
+                    "output": "/path/to/output",
+                    "format": "mustache",
+                    "template": {
+                        "path": "/path/to/template",
+                        "topics": "template.htm"
+                    },
+                    "file-extension": ".htm",
+                    "line-ending": "default | windows | unix | mac",
+                    "toc": {
+                        "format": "json",
+                        "path": "/path/to/toc-output-file"
+                    },
+                    "allow-unsafe-html": false
+                }
+            }
+        }
+    },
+    
+    /* default-parameters applied to all tests. */
+    "default-parameters": {
+        "reporting": {
+            "console": {
+                "log-level": "default | none | errorsOnly | verbose"
+            },
+            "appveyor": {
+                "log-level": "default | none | errorsOnly | verbose",
+                "url": "$env:APPVEYOR_API_URL"
+            },
+            "text-file": {
+                "log-level": "default | none | errorsOnly | verbose",
+                "path": "/path/to/file"
+            },
+            "fiddler": {
+                "path": "/path/to/file"
+            }
+        },
+        "severity": {
+            "errors": "default | critical | warn | ignore",
+            "warnings": "default | critical | warn | ignore",
+            "messages": "default | critical | warn | ignore"
+        },
+        "pull-requests": {
+            "pull-request-indicator": "$env:APPVEYOR_PULL_REQUEST_NUMBER", /* when this value is non-null, we're doing a pull request */
+            "target-branch": "$env:APPVEYOR_REPO_BRANCH" /* could also just be master */
+        },
+        "check-docs": {
+            "relax-string-validation": true
+        },
+        "check-links": {
+            "case-sensitive": true
+        },
+        "git-path": "/path/to/git.exe"
+    }
+}
+

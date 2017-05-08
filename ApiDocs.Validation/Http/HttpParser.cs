@@ -32,7 +32,20 @@ namespace ApiDocs.Validation.Http
 
     public class HttpParser
     {
-        
+
+        private static HttpParser defaultParser = null;
+
+        public static HttpParser Default
+        {
+            get
+            {
+                if (null == defaultParser)
+                {
+                    defaultParser = new HttpParser();
+                }
+                return defaultParser;
+            }
+        }
         
         /// <summary>
         /// Converts a raw HTTP request into an HttpWebRequest instance.

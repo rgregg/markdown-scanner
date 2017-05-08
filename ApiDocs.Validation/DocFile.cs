@@ -792,8 +792,8 @@ namespace ApiDocs.Validation
                 }
                 else if (addMissingParameters)
                 {
-                    Console.WriteLine($"Found property '{param.Name}' in markdown table that wasn't defined in '{resourceName}': {this.DisplayName}");
-                    detectedErrors.Add(new ValidationWarning(ValidationErrorCode.AdditionalPropertyDetected, this.DisplayName, $"Property '{param.Name}' found in markdown table but not in resource definition for '{resourceName}'."));
+                    //Console.WriteLine($"Found property '{param.Name}' in markdown table that wasn't defined in '{resourceName}': {this.DisplayName}");
+                    detectedErrors.Add(new UndocumentedPropertyWarning(this.DisplayName, param.Name, param.Type, resourceName, "Found in description table but not in the resource"));
 
                     // The parameter didn't exist in the collection, so let's add it.
                     collection.Add(param);
@@ -801,8 +801,9 @@ namespace ApiDocs.Validation
                 else
                 {
                     // Oops, we didn't find the property in the resource definition
-                    Console.WriteLine($"Found property '{param.Name}' in markdown table that wasn't defined in '{resourceName}': {this.DisplayName}");
-                    detectedErrors.Add(new ValidationWarning(ValidationErrorCode.AdditionalPropertyDetected, this.DisplayName, $"Property '{param.Name}' found in markdown table but not in resource definition for '{resourceName}'."));
+                    //Console.WriteLine($"Found property '{param.Name}' in markdown table that wasn't defined in '{resourceName}': {this.DisplayName}");
+                    detectedErrors.Add(new UndocumentedPropertyWarning(this.DisplayName, param.Name, param.Type, resourceName, "Found in description table but not in the resource"));
+                    //detectedErrors.Add(new ValidationWarning(ValidationErrorCode.AdditionalPropertyDetected, this.DisplayName, $"Property '{param.Name}' found in markdown table but not in resource definition for '{resourceName}'."));
                 }
             }
         }
@@ -1079,7 +1080,7 @@ namespace ApiDocs.Validation
                 {
                     case LinkValidationResult.ExternalSkipped:
                         if (includeWarnings)
-                            foundErrors.Add(new ValidationWarning(ValidationErrorCode.LinkValidationSkipped, this.DisplayName, "Skipped validation of external link '[{1}]({0})'", link.Definition.url, link.Text));
+                            foundErrors.Add(new ValidationMessage(this.DisplayName, "Skipped validation of external link '[{1}]({0})'", link.Definition.url, link.Text));
                         break;
                     case LinkValidationResult.FileNotFound:
                         foundErrors.Add(new ValidationError(ValidationErrorCode.LinkDestinationNotFound, this.DisplayName, "FileNotFound: '[{1}]({0})'. {2}", link.Definition.url, link.Text, suggestion));

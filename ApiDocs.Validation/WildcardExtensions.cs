@@ -23,38 +23,29 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace ApiDocs.Validation.Error
+
+namespace ApiDocs.Validation
 {
-    public class ValidationWarning : ValidationError
+    using System.Text.RegularExpressions;
+
+    internal static class WildcardExtensions
     {
-
-        public ValidationWarning(ValidationErrorCode code, string source, string format, params object[] formatParams)
-            : base(code, source, format, formatParams)
+        /// <summary>
+        /// Convert a wildcard string pattern to a RegEx.
+        /// </summary>
+        /// <param name="pattern"></param>
+        /// <returns></returns>
+        private static string WildcardToRegex(string pattern)
         {
-
+            return "^" + Regex.Escape(pattern)
+                              .Replace(@"\*", ".*")
+                              .Replace(@"\?", ".")
+                       + "$";
         }
 
-        public override bool IsWarning { get { return true; } }
-
-        public override bool IsError { get { return false; } }
-    }
-
-
-    public class UndocumentedPropertyWarning : ValidationWarning
-    {
-        public UndocumentedPropertyWarning(string source, string propertyName, ParameterDataType propertyType, string resourceName, string location = "")
-            : base(ValidationErrorCode.AdditionalPropertyDetected, source, $"Undocumented property '{propertyName}' [{propertyType}] was not expected on resource {resourceName}. {location}")
+        public static bool IsWildcardMatch(this string source, string pattern)
         {
-            this.PropertyName = propertyName;
-            this.PropertyType = propertyType;
-            this.ResourceName = resourceName;
-            this.Location = location;
+            return Regex.IsMatch(source, WildcardToRegex(pattern));
         }
-
-        public string PropertyName { get; private set; }
-        public ParameterDataType PropertyType { get; private set; }
-        public string ResourceName { get; private set; }
-        public string Location { get; private set; }
     }
-
 }
