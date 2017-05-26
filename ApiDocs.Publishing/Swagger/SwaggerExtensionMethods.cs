@@ -61,6 +61,7 @@ namespace ApiDocs.Publishing.Swagger
                 case SimpleDataType.Object:
                     return "object";
                 case SimpleDataType.Collection:
+                    return "collection";
                     throw new ArgumentException();
                 default:
                     return type.ToString().ToLower();
@@ -137,7 +138,7 @@ namespace ApiDocs.Publishing.Swagger
             SwaggerParameter p = new SwaggerParameter()
             {
                     Name = parameter.Name,
-                    Required = parameter.Required.Value,
+                    Required = parameter.Required.HasValue ? parameter.Required.Value : false,
                     Type = parameter.Type.ToSwaggerTypeString(),
                     Description = parameter.Description
             };
@@ -171,7 +172,7 @@ namespace ApiDocs.Publishing.Swagger
         /// <param name="method">Method.</param>
         internal static SwaggerMethod ToSwaggerMethod(this MethodDefinition method)
         {
-            var output = new SwaggerMethod { Summary = method.Title };
+            var output = new SwaggerMethod { Summary = method.Title, OperationId = Guid.NewGuid().ToString() };
 
             if (!string.IsNullOrEmpty(method.Description))
                 output.Description = method.Description;

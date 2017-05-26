@@ -114,11 +114,17 @@ namespace ApiDocs.Publishing.Swagger
         {
             var foundScopes = this.Documents.AuthScopes;
 
+            Dictionary<string, string> authScopes = new Dictionary<string, string>();
+            foreach(var scope in foundScopes)
+            {
+                authScopes[scope.Scope] = scope.Description;
+            }
+
             return new Dictionary<string, object> { 
                 {
                     this.AuthenticationParameters.ProviderName, new { 
                     type = this.AuthenticationParameters.AuthType,
-                    scopes = foundScopes.ToDictionary(x => x.Scope, x => x.Description),
+                    scopes = authScopes,
                     flow = this.AuthenticationParameters.OAuthFlow,
                     authorizationUrl = this.AuthenticationParameters.AuthorizationEndPoint
             }}};
@@ -279,6 +285,7 @@ namespace ApiDocs.Publishing.Swagger
                     
                     // Make sure any query string parameters on this method are included in the existing definition
                     var missingQueryParameters = method.MissingRequestParameters(true);
+                    if (existing.Parameters == null) { existing.Parameters = new List<Swagger.SwaggerParameter>(); };
                     existing.Parameters.AddRange(from qp in missingQueryParameters select qp.ToSwaggerParameter());
                 }
             }

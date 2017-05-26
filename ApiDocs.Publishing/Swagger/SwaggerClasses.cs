@@ -57,6 +57,9 @@ namespace ApiDocs.Publishing.Swagger
         [JsonProperty("responses", NullValueHandling=NullValueHandling.Ignore)]
         public Dictionary<string, SwaggerResponse> Responses { get; set; }
 
+        [JsonProperty("operationId")]
+        public string OperationId { get; internal set; }
+
         public SwaggerMethod()
         {
             this.Parameters = new List<SwaggerParameter>();
