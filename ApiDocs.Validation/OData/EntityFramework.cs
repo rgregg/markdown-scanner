@@ -25,6 +25,7 @@
 
 namespace ApiDocs.Validation.OData
 {
+    using Utility;
     using System;
     using System.Collections.Generic;
     using System.Linq;
@@ -38,9 +39,11 @@ namespace ApiDocs.Validation.OData
     /// Holds a representation of an entity framework model (EDMX)
     /// </summary>
     [XmlRoot("Edmx", Namespace = ODataParser.EdmxNamespace)]
+    [Mergable]
     public class EntityFramework : XmlBackedObject
     {
         [XmlAttribute("Version")]
+        [MergePolicy(Policy = MergePolicy.EqualOrNull)]
         public string Version { get; set; }
 
         [XmlElement("DataServices")]

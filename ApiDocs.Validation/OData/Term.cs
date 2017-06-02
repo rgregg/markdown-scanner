@@ -25,6 +25,7 @@
 
 namespace ApiDocs.Validation.OData
 {
+    using Utility;
     using System;
     using System.Collections.Generic;
     using System.Xml.Serialization;
@@ -36,15 +37,16 @@ namespace ApiDocs.Validation.OData
        </Term>
      */
     [XmlRoot("Term", Namespace = ODataParser.EdmNamespace)]
+    [Mergable(CollectionIdentifier = "ElementIdentifier")]
     public class Term : XmlBackedTransformableObject
     {
-        [XmlAttribute("Name"), SortBy]
+        [XmlAttribute("Name"), SortBy, MergePolicy(MergePolicy.EqualOrNull)]
         public string Name { get; set; }
 
-        [XmlAttribute("Type"), ContainsType]
+        [XmlAttribute("Type"), ContainsType, MergePolicy(MergePolicy.EqualOrNull)]
         public string Type { get; set; }
 
-        [XmlAttribute("AppliesTo"), ContainsType]
+        [XmlAttribute("AppliesTo"), ContainsType, MergePolicy(MergePolicy.EqualOrNull)]
         public string AppliesTo { get; set; }
 
         [XmlAttribute("WorkloadTermNamespace", Namespace = ODataParser.AgsNamespace)]
@@ -66,7 +68,24 @@ namespace ApiDocs.Validation.OData
         public const string NavigationRestrictionsTerm = "Org.OData.Capabilities.V1.NavigationRestrictions";
 
 
-        [XmlIgnore]
-        public override string ElementIdentifier { get { return this.Name; } set { this.Name = value; } }
+        [XmlIgnore, MergePolicy(MergePolicy.Ignore)]
+        public override string ElementIdentifier
+        {
+            get
+            {
+                return $"@{this.Name}";
+            }
+            set
+            {
+                if (value != null && value.StartsWith("@"))
+                {
+                    this.Name = value.Substring(1);
+                }
+                else
+                {
+                    this.Name = value;
+                }
+            }
+        }
     }
 }

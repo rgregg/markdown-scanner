@@ -387,6 +387,9 @@ namespace ApiDocs.ConsoleApp
         [Option("source", HelpText="Source metadata input file.")]
         public string SourceMetadataPath { get; set; }
 
+        [Option("merge-with", HelpText= "Specify a second metadata input file to merge with the first.")]
+        public string SecondSourceMetadataPath { get; set; }
+
         [Option("format", DefaultValue=MetadataFormat.Default, HelpText="Specify the input and output formats for metadata.")]
         public MetadataFormat DataFormat { get; set; }
 
@@ -423,6 +426,7 @@ namespace ApiDocs.ConsoleApp
                 Sort = SortOutput,
                 OutputDirectoryPath = OutputDirectory,
                 SourceMetadataPath = SourceMetadataPath,
+                MergeWithMetadataPath = SecondSourceMetadataPath,
                 Namespaces = Namespaces?.Split(new char[] { ';' }, StringSplitOptions.RemoveEmptyEntries),
                 TransformOutput = TransformOutput,
                 DocumentationSetPath = DocumentationSetPath,

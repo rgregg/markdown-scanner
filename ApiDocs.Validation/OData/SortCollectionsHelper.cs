@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace ApiDocs.Validation.OData
 {
-    public delegate void UpdateProperty(PropertyInfo property, object obj, Stack<object> parentObjects);
+    public delegate void WalkGraphAction(PropertyInfo property, object obj, Stack<object> parentObjects);
 
     public static class SortCollectionsHelper
     {
@@ -29,6 +29,8 @@ namespace ApiDocs.Validation.OData
 
         private static void SortMembersOfPropertyOfIList(PropertyInfo prop, object source, Stack<object> parentObjects)
         {
+            if (prop == null) return;
+
             IList list = prop.GetValue(source) as IList;
             if (list != null)
             {
@@ -71,65 +73,80 @@ namespace ApiDocs.Validation.OData
             });
         }
 
-        internal static void WalkObjectGraph<TAttribute>(object source, bool intoCollections, UpdateProperty action, Stack<object> parentObjectStack = null ) 
-            where TAttribute : Attribute
+        public static void WalkObjectGraph(object currentNode, bool walkCollections, WalkGraphAction action, Stack<object> objectStack, Func<PropertyInfo, bool> performActionOnProperty, Func<Type, bool> interestingTypeFunction = null)
         {
-            if (null == parentObjectStack)
+            if (currentNode == null)
             {
-                parentObjectStack = new Stack<object>();
-            }
-            else
-            {
-                if (parentObjectStack.Contains(source))
-                {
-                    // We've already walked this object, so we have a circular reference, let's not overflow the stack.
-                    return;
-                }
-            }
-            parentObjectStack.Push(source);
-
-            // Find the properties that are [Sortable]
-            var matchingProperties = source.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                .Where(p => p.GetCustomAttributes<TAttribute>(true).Any());
-
-            foreach (var prop in matchingProperties)
-            {
-                action(prop, source, parentObjectStack);   
+                return;
             }
 
-            // Recurse into the properties of this object that might also be sortable
-            var objectProperties = source.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.PropertyType.IsClass);
+            if (null == objectStack)
+            {
+                // Maintain a stack of objects in the hierarchy so we don't get stuck processing loops in the graph
+                objectStack = new Stack<object>();
+            }
+            else if (objectStack.Contains(currentNode))
+            {
+                // We've already walked this object, so we have a circular reference, let's not overflow the stack.
+                return;
+            }
+
+            objectStack.Push(currentNode);
+
+            interestingTypeFunction = interestingTypeFunction ?? (t => true);
+
+            // Act on the current object
+            if (interestingTypeFunction(currentNode.GetType()))
+            {
+                action(null, currentNode, objectStack);
+            }
+
+            // Walk down into the object graph for properties that have objects
+            var objectProperties = currentNode.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance);
             foreach (var prop in objectProperties)
             {
-                if (!prop.CanRead || !prop.CanWrite)
+                // Skip read or write only properties
+                if (!prop.CanRead || !prop.CanWrite) { continue; }
+
+                // Check to see if we should perform the action() on this property
+                if (performActionOnProperty(prop) && interestingTypeFunction(prop.GetType()))
                 {
-                    continue;
+                    action(prop, currentNode, objectStack);
                 }
 
+                // Check to see if this property holds an object we can walk into 
                 object value;
                 try
                 {
-                    value = prop.GetValue(source);
-                } catch (Exception)
+                    value = prop.GetValue(currentNode);
+                }
+                catch (Exception)
                 {
                     continue;
                 }
+
                 if (null != value)
                 {
-                    if (intoCollections && value is IEnumerable && !(value is string))
+                    if (walkCollections && value is IEnumerable && !(value is string))
                     {
                         foreach (var obj in (IEnumerable)value)
                         {
-                            WalkObjectGraph<TAttribute>(obj, intoCollections, action, parentObjectStack);
+                            WalkObjectGraph(obj, walkCollections, action, objectStack, performActionOnProperty, interestingTypeFunction);
                         }
                     }
                     else if (!(value is IEnumerable))
                     {
-                        WalkObjectGraph<TAttribute>(value, intoCollections, action, parentObjectStack);
+                        WalkObjectGraph(value, walkCollections, action, objectStack, performActionOnProperty, interestingTypeFunction);
                     }
                 }
             }
-            parentObjectStack.Pop();
+            objectStack.Pop();
+        }
+
+        internal static void WalkObjectGraph<TAttribute>(object source, bool intoCollections, WalkGraphAction action, Stack<object> parentObjectStack = null ) 
+            where TAttribute : Attribute
+        {
+            WalkObjectGraph(source, intoCollections, action, parentObjectStack, p => p.GetCustomAttributes<TAttribute>(true).Any(), null);
         }
 
         private static void SortMembersByProperties(this IList list, PropertyInfo[] properties)

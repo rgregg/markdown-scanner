@@ -27,7 +27,14 @@ namespace ApiDocs.Publishing.CSDL
 {
     using ApiDocs.Validation;
     using System;
+    using System.Collections.Generic;
+    using System.Reflection;
+    using System.Text;
     using Validation.Http;
+    using Validation.OData;
+    using Validation.OData.Transformation;
+    using Validation.Utility;
+
     internal static class CsdlExtensionMethods
     {
 
@@ -67,5 +74,20 @@ namespace ApiDocs.Publishing.CSDL
                 sb.Append(text);
             }
         }
+
+        /// <summary>
+        /// Merge two EntityFramework instances together into the first framework
+        /// </summary>
+        /// <param name="framework1"></param>
+        /// <param name="framework2"></param>
+        internal static EntityFramework MergeWith(this EntityFramework framework1, EntityFramework framework2)
+        {
+            ObjectGraphMerger<EntityFramework> merger = new ObjectGraphMerger<EntityFramework>(framework1, framework2);
+            return merger.Merge();
+        }
+
+       
+
+       
     }
 }

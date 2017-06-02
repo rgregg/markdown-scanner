@@ -25,11 +25,13 @@
 
 namespace ApiDocs.Validation.OData
 {
+    using Utility;
     using System;
     using System.Collections.Generic;
     using System.Xml.Serialization;
     using Transformation;
 
+    [Mergable(CollectionIdentifier = "Name")]
     public class EnumType : XmlBackedTransformableObject
     {
         [XmlAttribute("Name"), SortBy]
@@ -45,20 +47,22 @@ namespace ApiDocs.Validation.OData
         public List<EnumMember> Members { get; set; }
 
 
-        [XmlIgnore]
+        [XmlIgnore, MergePolicy(Policy = MergePolicy.Ignore)]
         public override string ElementIdentifier { get { return this.Name; } set { this.Name = value; } }
 
     }
 
+    [Mergable(CollectionIdentifier = "Name")]
     public class EnumMember : XmlBackedTransformableObject
     {
         [XmlAttribute("Name"), SortBy]
         public string Name { get; set; }
 
         [XmlAttribute("Value")]
+        [MergePolicy(Policy = MergePolicy.EqualOrNull)]
         public string Value { get; set; }
 
-        [XmlIgnore]
+        [XmlIgnore, MergePolicy(Policy =MergePolicy.Ignore)]
         public override string ElementIdentifier { get { return this.Name; } set { this.Name = value; } }
 
     }
