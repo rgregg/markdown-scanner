@@ -126,7 +126,16 @@ namespace ApiDocs.Validation.OData.Transformation
         {
             foreach (var mod in modifications)
             {
-                var filteredTargets = targets.Where(x => x.ElementIdentifier.Equals(mod.Key)).ToArray();
+                T_target[] filteredTargets = null;
+                if (mod.Key.EndsWith("*"))
+                {
+                    filteredTargets = targets.Where(x => x.ElementIdentifier.StartsWith(mod.Key.Substring(0, mod.Key.Length - 1))).ToArray();
+                }
+                else
+                {
+                    filteredTargets = targets.Where(x => x.ElementIdentifier.Equals(mod.Key)).ToArray();
+                }
+                
                 if (filteredTargets.Any())
                 {
                     foreach (var target in filteredTargets)

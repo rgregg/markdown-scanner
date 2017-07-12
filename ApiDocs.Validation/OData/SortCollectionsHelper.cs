@@ -54,6 +54,8 @@ namespace ApiDocs.Validation.OData
 
             WalkObjectGraph<Transformation.ContainsTypeAttribute>(firstNode, true, (prop, source, parentObjects) =>
             {
+                if (prop == null) return;
+
                 string value = (string)prop.GetValue(source);
                 if (null != value)
                 {

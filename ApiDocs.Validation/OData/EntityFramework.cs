@@ -69,7 +69,7 @@ namespace ApiDocs.Validation.OData
         /// <param name="schemaChanges"></param>
         public void ApplyTransformation(PublishSchemaChanges changes, string[] versions)
         {
-            if (changes.NamespacesToPublish.Any())
+            if (changes.NamespacesToPublish != null && changes.NamespacesToPublish.Any())
             {
                 DataServices.Schemas.RemoveAll(x => !changes.NamespacesToPublish.Contains(x.Namespace));
             }

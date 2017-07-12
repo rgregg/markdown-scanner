@@ -59,7 +59,7 @@ namespace ApiDocs.Validation.Utility
                 else
                 {
                     // We have complex objects at this level of hierarchy that we can't resolve, so we need to merge those nodes
-                    object mergedValue = MergeNodes(values);
+                    object mergedValue = MergeNodes(values.Where(x => x != null));
                     mapping.Property.SetValue(result, mergedValue);
                 }
             }
@@ -97,6 +97,13 @@ namespace ApiDocs.Validation.Utility
 
         private IEnumerable<object> DedupeMembersInCollection(MergerConditions mapping, IEnumerable<object> members)
         {
+            Dictionary<object, object> equivelentKeyValues = new Dictionary<object, object>();
+            var policyAttributeOnIdentifier = mapping?.CollectionIdentifierProperty?.GetCustomAttribute<MergePolicyAttribute>();
+            if (null != policyAttributeOnIdentifier)
+            {
+                equivelentKeyValues = ParseEquivalentValues(policyAttributeOnIdentifier.EquivalentValues);
+            }
+
             // Dedupe the objects based on their collection identifier value
             Dictionary<string, List<object>> uniqueMembers = new Dictionary<string, List<object>>();
             foreach(var obj in members)
@@ -106,6 +113,14 @@ namespace ApiDocs.Validation.Utility
                     throw new ObjectGraphMergerException($"Missing a collection identifier for class {mapping.CollectionInnerType.Name} referenced from {mapping.Property.DeclaringType.Name}.{mapping.Property.Name}.");
                 }
                 string key = (string)mapping.CollectionIdentifierProperty.GetValue(obj);
+
+                // Check to see if there is a value we should use instead of this one
+                object replacementKey = null;
+                if (equivelentKeyValues.TryGetValue(key, out replacementKey))
+                {
+                    key = (string)replacementKey;
+                }
+
                 List<object> knownMembersWithKey;
                 if (!uniqueMembers.TryGetValue(key, out knownMembersWithKey))
                 {
@@ -173,6 +188,23 @@ namespace ApiDocs.Validation.Utility
                 case MergePolicy.EqualOrNull:
                 case MergePolicy.Default:
                     {
+                        // See if we need to do any mapping of values to their replacements.                        
+                        if (mapping.EquivalentValues.Any())
+                        {
+                            object[] knownValues = values.ToArray();
+                            for(int i=0; i<knownValues.Length; i++)
+                            {
+                                object replacementValue;
+                                if (mapping.EquivalentValues.TryGetValue(knownValues[i], out replacementValue))
+                                {
+                                    knownValues[i] = replacementValue;
+                                }
+                            }
+                            
+                            // Replace the enumerable collection with our modified version
+                            values = knownValues;
+                        }
+
                         object knownValue = values.FirstOrDefault(x => x != null);
                         if (values.Any(x => x != null && !x.Equals(knownValue)))
                         {
@@ -206,10 +238,12 @@ namespace ApiDocs.Validation.Utility
                 var mergableProperties = type.GetProperties().Where(p => p.CanRead && p.CanWrite);
                 foreach(var prop in mergableProperties)
                 {
-                    var policy = prop.GetCustomAttribute<MergePolicyAttribute>(true)?.Policy ?? MergePolicy.Default;
+                    var policyAttrib = prop.GetCustomAttribute<MergePolicyAttribute>(true);
+                    var policy = policyAttrib?.Policy ?? MergePolicy.Default;
                     if (policy != MergePolicy.Ignore)
                     {
                         var condition = new MergerConditions { Policy = policy };
+                        condition.EquivalentValues = ParseEquivalentValues(policyAttrib?.EquivalentValues);
                         if (typeof(IEnumerable).IsAssignableFrom(prop.PropertyType) && prop.PropertyType != typeof(string))
                         {
                             condition.IsCollection = true;
@@ -240,10 +274,25 @@ namespace ApiDocs.Validation.Utility
             return result;
         }
 
+        private static Dictionary<object, object> ParseEquivalentValues(string equivalentValues)
+        {
+            var output = new Dictionary<object, object>();
+            if (equivalentValues != null)
+            {
+                var values = System.Web.HttpUtility.ParseQueryString(equivalentValues);
+                foreach (var key in values.AllKeys)
+                {
+                    output[key] = values[key];
+                }
+            }
+            return output;
+        }
+
         private class MergerConditions
         {
             public PropertyInfo Property { get; set; }
             public MergePolicy Policy { get; set; }
+            public Dictionary<object, object> EquivalentValues { get; set; }
             public bool IsCollection { get; set; }
             public Type CollectionInnerType { get; set; }
             public bool IsSimpleType { get; set; }
@@ -351,6 +400,8 @@ namespace ApiDocs.Validation.Utility
     public class MergePolicyAttribute : Attribute
     {
         public MergePolicy Policy { get; set; }
+
+        public string EquivalentValues { get; set; }
         
         public MergePolicyAttribute()
         {

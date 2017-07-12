@@ -39,7 +39,7 @@ namespace ApiDocs.Validation.OData
         [XmlAttribute("Term"), SortBy]
         public string Term { get; set; }
 
-        [XmlAttribute("String"), DefaultValue(null), MergePolicy(MergePolicy.EqualOrNull)]
+        [XmlAttribute("String"), DefaultValue(null), MergePolicy(MergePolicy.PreferGreaterValue)]
         public string String { get; set; }
 
         

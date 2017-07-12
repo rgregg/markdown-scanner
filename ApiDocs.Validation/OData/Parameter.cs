@@ -40,7 +40,7 @@ namespace ApiDocs.Validation.OData
             //Nullable = false;
         }
 
-        [XmlAttribute("Name"), SortBy]
+        [XmlAttribute("Name"), SortBy, MergePolicy(EquivalentValues = "this=bindingParameter")]
         public string Name { get; set; }
 
         [XmlAttribute("Type"), ContainsType]

@@ -147,6 +147,9 @@ namespace ApiDocs.Validation.OData.Transformation
         [JsonProperty("entityType")]
         public string EntityType { get; set; }
 
+        [JsonProperty("type")]
+        public string Type { get; set; }
+
         [JsonProperty("navigationPropertyBinding")]
         public Dictionary<string, NavigationPropertyBindingModification> NavigationPropertyBinding { get; set; }
     }

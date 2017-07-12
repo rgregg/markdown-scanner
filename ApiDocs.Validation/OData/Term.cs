@@ -73,17 +73,31 @@ namespace ApiDocs.Validation.OData
         {
             get
             {
-                return $"@{this.Name}";
+                return $"{this.AppliesTo}@{this.Name}";
             }
             set
             {
-                if (value != null && value.StartsWith("@"))
+                if (string.IsNullOrEmpty(value))
                 {
-                    this.Name = value.Substring(1);
+                    this.AppliesTo = null;
+                    this.Name = null;
                 }
                 else
                 {
-                    this.Name = value;
+                    var parts = value.Split('@');
+                    if (parts.Length == 1)
+                    {
+                        this.Name = parts[0];
+                    }
+                    else if (parts.Length == 2)
+                    {
+                        this.AppliesTo = parts[0];
+                        this.Name = parts[1];
+                    }
+                    else
+                    {
+                        throw new ArgumentException("Unexpected number of @ characters in value");
+                    }
                 }
             }
         }

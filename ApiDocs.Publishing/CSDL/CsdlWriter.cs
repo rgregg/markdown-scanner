@@ -61,7 +61,7 @@ namespace ApiDocs.Publishing.CSDL
 
         public override async Task PublishToFolderAsync(string outputFolder)
         {
-            string outputFilenameSuffix = null;
+            string outputFilenameSuffix = "";
 
             // Step 1: Generate an EntityFramework OM from the documentation and/or template file
             EntityFramework framework = CreateEntityFrameworkFromDocs();
@@ -72,6 +72,7 @@ namespace ApiDocs.Publishing.CSDL
             {
                 EntityFramework secondFramework = CreateEntityFrameworkFromDocs(options.MergeWithMetadataPath, generateFromDocs: false);
                 framework = framework.MergeWith(secondFramework);
+                outputFilenameSuffix += "-merged";
             }
 
             // Step 1a: Apply an transformations that may be defined in the documentation
@@ -87,7 +88,7 @@ namespace ApiDocs.Publishing.CSDL
                 framework.ApplyTransformation(transformations.SchemaChanges, versionsToPublish);
                 if (!string.IsNullOrEmpty(options.Version))
                 {
-                    outputFilenameSuffix = $"-{options.Version}";
+                    outputFilenameSuffix += $"-{options.Version}";
                 }
             }
 
