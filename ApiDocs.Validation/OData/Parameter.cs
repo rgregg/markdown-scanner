@@ -113,13 +113,6 @@ namespace ApiDocs.Validation.OData
         [XmlIgnore, MergePolicy(MergePolicy.Ignore)]
         public override string ElementIdentifier { get { return this.Name; } set { this.Name = value; } }
 
-        /// <summary>
-        /// Specify a parameter index so that parameter order can be maintained even if we sort the collections.
-        /// This would come from a transform rule and not from CSDL
-        /// </summary>
-        [XmlIgnore, SortBy(0), MergePolicy(MergePolicy.Ignore)]
-        public int? ParameterIndex { get; set; }
-
         public override void ApplyTransformation(BaseModifications value, EntityFramework edmx, string[] versions)
         {
             base.ApplyTransformation(value, edmx, versions);

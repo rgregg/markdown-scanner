@@ -38,7 +38,7 @@ namespace ApiDocs.Validation.OData
                 Type[] genericTypes = type.GenericTypeArguments;
 
                 if (genericTypes.Contains(typeof(Parameter))) { Console.WriteLine("Sorting parameters..."); }
-
+                string debug = genericTypes.FirstOrDefault()?.Name;
                 list.SortMembersByProperties(GetSortByProperties(genericTypes.First()));
                 foreach (object o in list)
                 {

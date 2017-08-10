@@ -33,16 +33,42 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, SchemaModifications> Schemas { get; set; }
     }
 
+    /// <summary>
+    /// Properties in CommonModificationProperties are copied to all objects if applicable.
+    /// </summary>
+    public class CommonModificationProperties : BaseModifications
+    {
+        [JsonProperty("order")]
+        public int? CollectionIndex { get; set; }
+    }
+
+    /// <summary>
+    /// Properties in BaseModifications are NOT copied to the target of the modification. These are used as control properties for 
+    /// behavior outside of modifying the actual instance of the target object.
+    /// </summary>
     public class BaseModifications
     {
+        /// <summary>
+        /// Indicates that the target element should be removed after the schema
+        /// </summary>
         [JsonProperty("remove")]
         public bool Remove { get; set; }
 
+        /// <summary>
+        /// Indicates that the target element should be added if missing from the schema
+        /// </summary>
+        [JsonProperty("add")]
+        public bool Add { get; set; }
+
+        /// <summary>
+        /// Indiciates the version(s) of output schema that should include the target element.
+        /// </summary>
         [JsonProperty("versions")]
         public string[] AvailableInVersions { get; set; }
+
     }
 
-    public class SchemaModifications : BaseModifications
+    public class SchemaModifications : CommonModificationProperties
     {
         [JsonProperty("entityType")]
         public Dictionary<string, EntityTypeModification> EntityTypes { get; set; }
@@ -66,7 +92,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, AnnotationModification> Annotations { get; set; }
     }
 
-    public class TermModification : BaseModifications
+    public class TermModification : CommonModificationProperties
     {
         [JsonProperty("type")]
         public string Type { get; set; }
@@ -81,7 +107,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, AnnotationModification> Annotations { get; set; }
     }
 
-    public class AnnotationModification : BaseModifications
+    public class AnnotationModification : CommonModificationProperties
     {
         [JsonProperty("string")]
         public string String { get; set; }
@@ -90,7 +116,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public bool? Bool { get; set; }
     }
 
-    public class FunctionModification : BaseModifications
+    public class FunctionModification : CommonModificationProperties
     {
         [JsonProperty("isBound")]
         public bool? IsBound { get; set; }
@@ -105,7 +131,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public ReturnTypeModification ReturnType { get; set; }
     }
 
-    public class ReturnTypeModification : BaseModifications
+    public class ReturnTypeModification : CommonModificationProperties
     {
         [JsonProperty("type")]
         public string Type { get; set; }
@@ -117,7 +143,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public bool? Unicode { get; set; }
     }
 
-    public class ParameterModification : BaseModifications
+    public class ParameterModification : CommonModificationProperties
     {
         [JsonProperty("type")]
         public string Type { get; set; }
@@ -128,12 +154,9 @@ namespace ApiDocs.Validation.OData.Transformation
         [JsonProperty("unicode")]
         public bool? Unicode { get; set; }
 
-        [JsonProperty("order")]
-        public int? ParameterIndex { get; set; }
-
     }
 
-    public class EntityContainerModification : BaseModifications
+    public class EntityContainerModification : CommonModificationProperties
     {
         [JsonProperty("entitySet")]
         public Dictionary<string, EntitySetModification> EntitySets { get; set; }
@@ -142,7 +165,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, EntitySetModification> Singletons { get; set; }
     }
 
-    public class EntitySetModification : BaseModifications
+    public class EntitySetModification : CommonModificationProperties
     {
         [JsonProperty("entityType")]
         public string EntityType { get; set; }
@@ -154,13 +177,13 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, NavigationPropertyBindingModification> NavigationPropertyBinding { get; set; }
     }
 
-    public class NavigationPropertyBindingModification : BaseModifications
+    public class NavigationPropertyBindingModification : CommonModificationProperties
     {
         [JsonProperty("target")]
         public string Target { get; set; }
     }
 
-    public class ComplexTypeModification : BaseModifications
+    public class ComplexTypeModification : CommonModificationProperties
     {
         [JsonProperty("graphName")]
         public string GraphEntityTypeName { get; set; }
@@ -196,19 +219,19 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, PropertyModification> NavigationProperties { get; set; }
     }
 
-    public class KeyModification : BaseModifications
+    public class KeyModification : CommonModificationProperties
     {
         [JsonProperty]
         public PropertyRefModification PropertyRef { get; set; }
     }
 
-    public class PropertyRefModification : BaseModifications
+    public class PropertyRefModification : CommonModificationProperties
     {
         [JsonProperty("name")]
         public string Name { get; set; }
     }
 
-    public class PropertyModification : BaseModifications
+    public class PropertyModification : CommonModificationProperties
     {
         [JsonProperty("ags:CreateVirutalNavigationProperty")]
         public bool? CreateVirtualNavigationProperty { get; set; }
@@ -235,7 +258,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public string GraphPropertyName { get; set; }
     }
 
-    public class EnumerationTypeModification : BaseModifications
+    public class EnumerationTypeModification : CommonModificationProperties
     {
         [JsonProperty("underlyingType")]
         public string UnderlyingType { get; set; }
@@ -247,7 +270,7 @@ namespace ApiDocs.Validation.OData.Transformation
         public Dictionary<string, MemberModification> Members { get; set; }
     }
 
-    public class MemberModification : BaseModifications
+    public class MemberModification : CommonModificationProperties
     {
         [JsonProperty("value")]
         public string Value { get; set; }

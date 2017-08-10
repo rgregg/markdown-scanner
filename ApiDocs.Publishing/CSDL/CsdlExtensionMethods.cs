@@ -93,12 +93,14 @@ namespace ApiDocs.Publishing.CSDL
                 {
                     foreach(var param in action.Parameters.Where(x => x.Name == "bindingParameter" || x.Name == "this")) {
                         param.Name = "bindingParameter";
+                        param.Nullable = null;
                     }
                 }
                 foreach(var func in schema.Functions)
                 {
                     foreach (var param in func.Parameters.Where(x => x.Name == "bindingParameter" || x.Name == "this")) {
                         param.Name = "bindingParameter";
+                        param.Nullable = null;
                     }
                 }
             }

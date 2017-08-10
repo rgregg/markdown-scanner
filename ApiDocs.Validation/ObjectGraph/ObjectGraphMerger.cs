@@ -31,6 +31,9 @@ namespace ApiDocs.Validation.Utility
 
         private object MergeNodes(IEnumerable<object> nodesToMerge)
         {
+            if (!nodesToMerge.Any())
+                return null;
+
             Type type = nodesToMerge.First().GetType();
             VerifyNodesAreOfType(nodesToMerge, type);
 

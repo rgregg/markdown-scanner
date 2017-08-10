@@ -142,10 +142,12 @@ namespace ApiDocs.Validation.OData.Transformation
                     {
                         if (mod.Value.Remove)
                         {
+                            Console.WriteLine($"Removed {mod.Key} from output.");
                             targets.Remove(target);
                         }
                         else if (versions != null && mod.Value.AvailableInVersions != null && !IsVersionMatch(versions, mod.Value.AvailableInVersions))
                         {
+                            Console.WriteLine($"Removed {mod.Key} from output because of version mis-match.");
                             targets.Remove(target);
                         }
                         else
@@ -156,11 +158,18 @@ namespace ApiDocs.Validation.OData.Transformation
                 }
                 else if (!mod.Value.Remove && (versions == null || mod.Value.AvailableInVersions == null || IsVersionMatch(versions, mod.Value.AvailableInVersions)))
                 {
-                    // Create the target and apply properties
-                    var target = new T_target();
-                    target.ElementIdentifier = mod.Key;
-                    target.ApplyTransformation(mod.Value, edmx, versions);
-                    targets.Add(target);
+                    if (!mod.Value.Add)
+                    {
+                        Console.WriteLine($"Transformation indicates {mod.Key} should be added, but missing required \"add\": true modification property.");
+                    }
+                    else
+                    {
+                        // Create the target and apply properties
+                        var target = new T_target();
+                        target.ElementIdentifier = mod.Key;
+                        target.ApplyTransformation(mod.Value, edmx, versions);
+                        targets.Add(target);
+                    }
                 }
                 else
                 {
