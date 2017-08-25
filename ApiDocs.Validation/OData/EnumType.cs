@@ -31,9 +31,18 @@ namespace ApiDocs.Validation.OData
     using System.Xml.Serialization;
     using Transformation;
 
-    [Mergable(CollectionIdentifier = "Name")]
-    public class EnumType : XmlBackedTransformableObject
+    [XmlRoot("EnumType", Namespace = ODataParser.EdmNamespace),
+     Mergable(CollectionIdentifier = "Name")]
+    public class EnumType : XmlBackedTransformableObject, IODataAnnotatable, IODataNavigable
     {
+        public EnumType()
+        {
+            this.Annotation = new List<Annotation>();
+        }
+
+        [XmlElement("Annotation", Namespace = ODataParser.EdmNamespace)]
+        public List<Annotation> Annotation { get; set; }
+
         [XmlAttribute("Name"), SortBy]
         public string Name { get; set; }
 
@@ -49,6 +58,19 @@ namespace ApiDocs.Validation.OData
 
         [XmlIgnore, MergePolicy(Policy = MergePolicy.Ignore)]
         public override string ElementIdentifier { get { return this.Name; } set { this.Name = value; } }
+
+        [XmlIgnore]
+        public string TypeIdentifier { get { return Name; } }
+
+        public IODataNavigable NavigateByEntityTypeKey(EntityFramework edmx)
+        {
+            throw new NotImplementedException();
+        }
+
+        public IODataNavigable NavigateByUriComponent(string component, EntityFramework edmx)
+        {
+            throw new NotImplementedException();
+        }        
 
     }
 

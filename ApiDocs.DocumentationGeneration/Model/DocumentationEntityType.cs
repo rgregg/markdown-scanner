@@ -23,31 +23,25 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace ApiDocs.Validation.OData
+namespace ApiDocs.DocumentationGeneration.Model
 {
-    using Utility;
-    using Transformation;
     using System.Collections.Generic;
-    using System.Xml.Serialization;
+    using System.Linq;
 
+    using ApiDocs.DocumentationGeneration.Extensions;
+    using ApiDocs.Validation.OData;
 
-    [XmlRoot("Annotations", Namespace = ODataParser.EdmNamespace)]
-    [Mergable(CollectionIdentifier ="ElementIdentifier")]
-    public class Annotations : XmlBackedTransformableObject
+    public class DocumentationEntityType : DocumentationComplexType
     {
-        public Annotations()
+        public DocumentationEntityType(EntityFramework entityFramework, EntityType entity)
+            : base(entityFramework, entity)
         {
-            this.AnnotationList = new List<Annotation>();
+            this.IsEntity = true;
+            this.NavigationProperties = entity.NavigationProperties.Select(p => p.ToDocumentationNavigationProperty(entityFramework, entity)).ToList().AsReadOnly();
         }
-    
-        [XmlElement("Annotation")]
-        public List<Annotation> AnnotationList { get; set; }
 
-        [XmlAttribute("Target"), SortBy, MergePolicy(MergePolicy.EqualOrNull)]
-        public string Target { get; set; }
+        public bool IsEntity { get; private set; }
 
-        [XmlIgnore, MergePolicy(MergePolicy.Ignore)]
-        public override string ElementIdentifier { get { return this.Target; } set { this.Target = value; } }
-
+        public IReadOnlyCollection<DocumentationProperty> NavigationProperties { get; private set; }
     }
 }

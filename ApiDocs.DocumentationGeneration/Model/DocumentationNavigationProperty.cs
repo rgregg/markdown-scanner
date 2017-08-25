@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Markdown Scanner
  * Copyright (c) Microsoft Corporation
  * All rights reserved. 
@@ -23,31 +23,17 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace ApiDocs.Validation.OData
+namespace ApiDocs.DocumentationGeneration.Model
 {
-    using Utility;
-    using Transformation;
     using System.Collections.Generic;
-    using System.Xml.Serialization;
 
+    using ApiDocs.Validation.OData;
 
-    [XmlRoot("Annotations", Namespace = ODataParser.EdmNamespace)]
-    [Mergable(CollectionIdentifier ="ElementIdentifier")]
-    public class Annotations : XmlBackedTransformableObject
+    public class DocumentationNavigationProperty : DocumentationProperty
     {
-        public Annotations()
+        public DocumentationNavigationProperty(EntityFramework entityFramework, EntityType entityType, NavigationProperty property)
+            : base(entityFramework, entityType, property)
         {
-            this.AnnotationList = new List<Annotation>();
         }
-    
-        [XmlElement("Annotation")]
-        public List<Annotation> AnnotationList { get; set; }
-
-        [XmlAttribute("Target"), SortBy, MergePolicy(MergePolicy.EqualOrNull)]
-        public string Target { get; set; }
-
-        [XmlIgnore, MergePolicy(MergePolicy.Ignore)]
-        public override string ElementIdentifier { get { return this.Target; } set { this.Target = value; } }
-
     }
 }

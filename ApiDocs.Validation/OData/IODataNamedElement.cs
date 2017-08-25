@@ -25,29 +25,11 @@
 
 namespace ApiDocs.Validation.OData
 {
-    using Utility;
-    using Transformation;
-    using System.Collections.Generic;
-    using System.Xml.Serialization;
-
-
-    [XmlRoot("Annotations", Namespace = ODataParser.EdmNamespace)]
-    [Mergable(CollectionIdentifier ="ElementIdentifier")]
-    public class Annotations : XmlBackedTransformableObject
+    /// <summary>
+    /// Interface for name OData elements
+    /// </summary>
+    public interface IODataNamedElement
     {
-        public Annotations()
-        {
-            this.AnnotationList = new List<Annotation>();
-        }
-    
-        [XmlElement("Annotation")]
-        public List<Annotation> AnnotationList { get; set; }
-
-        [XmlAttribute("Target"), SortBy, MergePolicy(MergePolicy.EqualOrNull)]
-        public string Target { get; set; }
-
-        [XmlIgnore, MergePolicy(MergePolicy.Ignore)]
-        public override string ElementIdentifier { get { return this.Target; } set { this.Target = value; } }
-
+        string Name { get; set; }
     }
 }
