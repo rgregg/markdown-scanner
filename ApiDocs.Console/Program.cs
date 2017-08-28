@@ -1307,7 +1307,10 @@ namespace ApiDocs.ConsoleApp
                     publisher = new HtmlMustacheWriter(docs, options);
                     break;
                 case PublishOptions.PublishFormat.JsonToc:
-                    publisher = new HtmlMustacheWriter(docs, options) { TocOnly = true };
+                    publisher = new HtmlMustacheWriter(docs, options) { TocOnly = true, TocFormat = TableOfContentsFormat.Json, IncludeSectionsInToc = true };
+                    break;
+                case PublishOptions.PublishFormat.MarkdownToc:
+                    publisher = new HtmlMustacheWriter(docs, options) { TocOnly = true, TocFormat = TableOfContentsFormat.Markdown, IncludeSectionsInToc = false };
                     break;
                 case PublishOptions.PublishFormat.Swagger2:
                     publisher = new SwaggerWriter(docs, "https://service.org")  // TODO: Plumb in the base URL.

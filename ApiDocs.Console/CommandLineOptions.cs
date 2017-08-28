@@ -543,7 +543,8 @@ namespace ApiDocs.ConsoleApp
             Swagger2,
             Outline,
             Mustache,
-            JsonToc
+            JsonToc,
+            MarkdownToc
         }
     }
 

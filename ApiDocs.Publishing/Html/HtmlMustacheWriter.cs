@@ -35,6 +35,8 @@ namespace ApiDocs.Publishing.Html
     using Mustache;
     using System.Dynamic;
     using Newtonsoft.Json;
+    using System.Text;
+
     public class HtmlMustacheWriter : DocumentPublisherHtml
     {
         private Generator generator;
@@ -47,9 +49,14 @@ namespace ApiDocs.Publishing.Html
         /// </summary>
         public bool TocOnly { get; set; }
 
+        public TableOfContentsFormat TocFormat { get; set; }
+
+        public bool IncludeSectionsInToc { get; set; }
+
         public HtmlMustacheWriter(DocSet docs, IPublishOptions options) : base(docs, options)
         {
             this.CollapseTocToActiveGroup = false;
+            this.TocFormat = TableOfContentsFormat.Json;
         }
 
         protected override void LoadTemplate()
@@ -284,15 +291,63 @@ namespace ApiDocs.Publishing.Html
             }
 
             allTocEntries = allTocEntries.OrderBy(x => x.TocPath).ToList();
-            var tree = BuildTreeFromList(allTocEntries, addLevelForSections: true);
-            var data = new { toc = tree };
+            var tree = BuildTreeFromList(allTocEntries, addLevelForSections: this.IncludeSectionsInToc);
 
+
+            switch (this.TocFormat)
+            {
+                case TableOfContentsFormat.Json:
+                    await WriteJsonTocAsync(destination, tree);
+                    break;
+                case TableOfContentsFormat.Markdown:
+                    await WriteMarkdownTocAsync(destination, tree);
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
+        }
+
+        private static async Task WriteJsonTocAsync(string destinationPath, List<TocItem> tree)
+        {
+            var data = new { toc = tree };
             string output = JsonConvert.SerializeObject(data, Formatting.Indented);
 
-            using (var writer = new StreamWriter(destination, false, new System.Text.UTF8Encoding(false)))
+            using (var writer = new StreamWriter(destinationPath, false, new System.Text.UTF8Encoding(false)))
             {
                 await writer.WriteLineAsync(output);
                 await writer.FlushAsync();
+            }
+        }
+
+        private static async Task WriteMarkdownTocAsync(string destinationPath, List<TocItem> tree)
+        {
+            StringBuilder sb = new StringBuilder();
+            AppendMarkdownToc(sb, tree, 1);
+
+            using (var writer = new StreamWriter(destinationPath, false, new System.Text.UTF8Encoding(false)))
+            {
+                await writer.WriteLineAsync(sb.ToString());
+                await writer.FlushAsync();
+            }
+        }
+
+        private static void AppendMarkdownToc(StringBuilder sb, List<TocItem> tree, int depth)
+        {
+            foreach(var item in tree)
+            {
+                sb.Append(new string('#', depth));
+                if (!string.IsNullOrWhiteSpace(item.Url))
+                {
+                    sb.AppendLine($" [{item.Title}]({item.Url.Substring(1)})");
+                }
+                else
+                {
+                    sb.AppendLine($" {item.Title}");
+                }
+                    
+                
+
+                AppendMarkdownToc(sb, item.NextLevel, depth + 1);
             }
         }
 
@@ -300,7 +355,6 @@ namespace ApiDocs.Publishing.Html
         {
             if (file.Annotation == null || file.Annotation.Section == null)
                 return;
-
         }
 
         /// <summary>
@@ -457,6 +511,13 @@ namespace ApiDocs.Publishing.Html
     public class ValueObject<T>
     {
         public T Value { get; set; }
+    }
+
+    public enum TableOfContentsFormat
+    {
+        Json,
+        Markdown,
+        Yaml
     }
 
 }
