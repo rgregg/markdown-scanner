@@ -71,6 +71,7 @@
     <Compile Include="MethodValidationExtensionMethods.cs" />
     <Compile Include="MultipartMime\MimeContentType.cs" />
     <Compile Include="MultipartMime\MultipartMimeContent.cs" />
+    <Compile Include="ObjectGraph\ExtensionMethods.cs" />
     <Compile Include="ObjectGraph\ObjectGraphMerger.cs" />
     <Compile Include="OData\Annotations.cs" />
     <Compile Include="OData\DataServices.cs" />

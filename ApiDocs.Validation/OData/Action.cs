@@ -50,7 +50,7 @@ namespace ApiDocs.Validation.OData
         public string EntitySetPath { get; set; }
     }
 
-    [Mergable(CollectionIdentifier = "ElementIdentifier")]
+    [Mergable(CollectionIdentifier = "ElementIdentifier", CollapseSingleItemMatchingProperty = "Name")]
     public class ActionOrFunctionBase : XmlBackedTransformableObject
     {
         [XmlAttribute("Name"), SortBy, MergePolicy(MergePolicy.EqualOrNull)]

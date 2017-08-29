@@ -25,16 +25,48 @@ namespace ApiDocs.Validation.Utility
         /// </summary>
         public T Merge()
         {
-            this.Result = (T)MergeNodes(this.Sources.Cast<object>());
-            return this.Result;
+            Dictionary<T, string> sourceIdentifier = new Dictionary<T, string>();
+            foreach(var source in this.Sources)
+            {
+                sourceIdentifier[source] = Guid.NewGuid().ToString();
             }
 
-        private object MergeNodes(IEnumerable<object> nodesToMerge)
+            var input = this.Sources.Select(x => new NodeToMerge { Source = sourceIdentifier[x], Node = x }).ToArray();
+            var mergerResult = MergeNodes(input);
+            this.Result = (T)mergerResult;
+            return this.Result;
+        }
+
+
+        private class NodeToMerge
+        {
+            public string Source { get; set; }
+
+            public object Node { get; set;}
+
+            public NodeToMerge()
+            {
+
+            }
+
+            public NodeToMerge(string source, object node)
+            {
+                this.Source = source;
+                this.Node = node;
+            }
+        }
+
+        /// <summary>
+        /// Takes a collection of NodeToMerge objects and returns the single resulting object that is the merger of the two nodesToMerge.Node objects.
+        /// </summary>
+        /// <param name="nodesToMerge"></param>
+        /// <returns></returns>
+        private object MergeNodes(IEnumerable<NodeToMerge> nodesToMerge)
         {
             if (!nodesToMerge.Any())
                 return null;
 
-            Type type = nodesToMerge.First().GetType();
+            Type type = nodesToMerge.First().Node.GetType();
             VerifyNodesAreOfType(nodesToMerge, type);
 
             var result = CreateInstanceOfType(type);
@@ -44,7 +76,7 @@ namespace ApiDocs.Validation.Utility
             {
                 var values = (from node in nodesToMerge
                               where node != null
-                              select mapping.Property.GetValue(node));
+                              select new NodeToMerge { Source = node.Source, Node = mapping.Property.GetValue(node.Node) });
 
                 if (mapping.IsCollection)
                 {
@@ -56,13 +88,13 @@ namespace ApiDocs.Validation.Utility
                 }
                 else if (mapping.IsSimpleType)
                 {
-                    object mergedCollection = CalculateMergedValueForMapping(mapping, values);
+                    object mergedCollection = CalculateMergedValueForMapping(mapping, values.Select(x => x.Node));
                     mapping.Property.SetValue(result, mergedCollection);
                 }
                 else
                 {
                     // We have complex objects at this level of hierarchy that we can't resolve, so we need to merge those nodes
-                    object mergedValue = MergeNodes(values.Where(x => x != null));
+                    object mergedValue = MergeNodes(values.Where(x => x.Node != null));
                     mapping.Property.SetValue(result, mergedValue);
                 }
             }
@@ -98,8 +130,13 @@ namespace ApiDocs.Validation.Utility
             }
         }
 
-        private IEnumerable<object> DedupeMembersInCollection(MergerConditions mapping, IEnumerable<object> members)
+        private IEnumerable<object> DedupeMembersInCollection(MergerConditions mapping, IEnumerable<NodeToMerge> members)
         {
+            if (!members.Any())
+            {
+                return new object[0];
+            }
+
             Dictionary<object, object> equivelentKeyValues = new Dictionary<object, object>();
             var policyAttributeOnIdentifier = mapping?.CollectionIdentifierProperty?.GetCustomAttribute<MergePolicyAttribute>();
             if (null != policyAttributeOnIdentifier)
@@ -107,32 +144,56 @@ namespace ApiDocs.Validation.Utility
                 equivelentKeyValues = ParseEquivalentValues(policyAttributeOnIdentifier.EquivalentValues);
             }
 
-            // Dedupe the objects based on their collection identifier value
-            Dictionary<string, List<object>> uniqueMembers = new Dictionary<string, List<object>>();
-            foreach(var obj in members)
+            if (null == mapping.CollectionIdentifierProperty)
             {
-                if (null == mapping.CollectionIdentifierProperty)
-                {
-                    throw new ObjectGraphMergerException($"Missing a collection identifier for class {mapping.CollectionInnerType.Name} referenced from {mapping.Property.DeclaringType.Name}.{mapping.Property.Name}.");
-                }
-                string key = (string)mapping.CollectionIdentifierProperty.GetValue(obj);
-
-                // Check to see if there is a value we should use instead of this one
-                object replacementKey = null;
-                if (equivelentKeyValues.TryGetValue(key, out replacementKey))
-                {
-                    key = (string)replacementKey;
-                }
-
-                List<object> knownMembersWithKey;
-                if (!uniqueMembers.TryGetValue(key, out knownMembersWithKey))
-                {
-                    knownMembersWithKey = new List<object>();
-                    uniqueMembers.Add(key, knownMembersWithKey);
-                }
-                knownMembersWithKey.Add(obj);
+                throw new ObjectGraphMergerException($"Missing a collection identifier for class {mapping.CollectionInnerType.Name} referenced from {mapping.Property.DeclaringType.Name}.{mapping.Property.Name}.");
             }
-            
+
+            Dictionary<string, List<NodeToMerge>> uniqueMembers = new Dictionary<string, List<NodeToMerge>>();
+
+            // First pass, organize everything by the collapse single object matching property, if it exists
+            Dictionary<string, List<NodeToMerge>> matchingMembers = new Dictionary<string, List<NodeToMerge>>();
+            foreach (var obj in members)
+            {
+                if (mapping.CollapseSingleObjectMatchingProperty != null)
+                {
+                    string collapsingKey = (string)mapping.CollapseSingleObjectMatchingProperty.GetValue(obj.Node);
+                    if (!string.IsNullOrEmpty(collapsingKey))
+                    {
+                        matchingMembers.AddToList(collapsingKey, obj);
+                    }
+                }
+                else
+                {
+                    string key = (string)mapping.CollectionIdentifierProperty.GetValue(obj.Node);
+                    object newKey;
+                    if (equivelentKeyValues != null && equivelentKeyValues.TryGetValue(key, out newKey))
+                    {
+                        key = (string)newKey;
+                    }
+                    matchingMembers.AddToList(key, obj);
+                }
+            }
+
+            foreach(var match in matchingMembers)
+            {
+                // Special case, the same object is defined in two different sources only once.
+                if (match.Value.Count == 2 && match.Value[0].Source != match.Value[1].Source)
+                {
+                    // Single instance of a member, with different sources, means we should treat them as a single mergable member
+                    uniqueMembers.AddToList(match.Key, match.Value[0], match.Value[1]);
+                }
+                else
+                {
+                    // Reindex these nodes using their element identifier instead of the collapsing element identifier
+                    foreach (var matchedNode in match.Value)
+                    {
+                        string key = (string)mapping.CollectionIdentifierProperty.GetValue(matchedNode.Node);
+                        uniqueMembers.AddToList(key, matchedNode);
+                    }
+                }
+            }
+
             // Merge any elements where a duplicate key exists
             foreach(var key in uniqueMembers)
             {
@@ -140,12 +201,12 @@ namespace ApiDocs.Validation.Utility
                 {
                     var mergedNode = MergeNodes(key.Value.ToArray());
                     key.Value.Clear();
-                    key.Value.Add(mergedNode);
+                    key.Value.Add(new NodeToMerge { Source = "merger", Node = mergedNode });
                 }
             }
 
             // Return the single value from each key member
-            return (from m in uniqueMembers select m.Value.Single());
+            return (from m in uniqueMembers select m.Value.Single().Node);
         }
 
         private static bool IsSimple(Type type)
@@ -165,16 +226,19 @@ namespace ApiDocs.Validation.Utility
         /// 
         /// </summary>
         /// <returns></returns>
-        private static IEnumerable<object> EnumerableAllCollectionMembers(IEnumerable<object> collections)
+        private static IEnumerable<NodeToMerge> EnumerableAllCollectionMembers(IEnumerable<NodeToMerge> collections)
         {
-            foreach(IEnumerable<object> collection in collections)
+            foreach(var collectionNode in collections)
             {
-                if (collection != null)
+                if (collectionNode == null || collectionNode.Node == null)
+                    continue;
+
+                if (!(collectionNode.Node is IEnumerable))
+                    throw new InvalidOperationException("Cannot enumerate the collection members of a node that isn't a collection.");
+
+                foreach(var obj in (IEnumerable)collectionNode.Node)
                 {
-                    foreach (var obj in collection)
-                    {
-                        yield return obj;
-                    }
+                    yield return new NodeToMerge(collectionNode.Source, obj);
                 }
             }
         }
@@ -211,7 +275,15 @@ namespace ApiDocs.Validation.Utility
                         object knownValue = values.FirstOrDefault(x => x != null);
                         if (values.Any(x => x != null && !x.Equals(knownValue)))
                         {
-                            throw new ObjectGraphMergerException($"Unable to merge values for {mapping.Property.DeclaringType.Name}.{mapping.Property.Name} because values are not equal or null. Values: {values}.");
+                            if (IsSimple(knownValue.GetType()))
+                            {
+                                Console.WriteLine($"Unable to merge values for {mapping.Property.DeclaringType.Name}.{mapping.Property.Name} because values are not equal or null. Values: {values.Select(x => x.ToString()).ComponentsJoinedByString(",")}.");
+                                return $"MERGE INCONSISTENCY: {values.Select(x => x.ToString()).ComponentsJoinedByString(",")}";
+                            }
+                            else
+                            {
+                                throw new InvalidOperationException($"Unable to merge values for {mapping.Property.DeclaringType.Name}.{mapping.Property.Name} because values are not equal or null. Values: {values.Select(x => x.ToString()).ComponentsJoinedByString(",")}.");
+                            }
                         }
                         return knownValue;
                     }
@@ -265,6 +337,12 @@ namespace ApiDocs.Validation.Utility
                             {
                                 condition.CollectionIdentifierProperty = condition.CollectionInnerType?.GetProperty(condition.CollectionIdentifierPropertyName);
                             }
+                            condition.CollapseSingleItemMatchingName = condition.CollectionInnerType?.GetCustomAttribute<MergableAttribute>(true)?.CollapseSingleItemMatchingProperty;
+                            if (!string.IsNullOrEmpty(condition.CollapseSingleItemMatchingName))
+                            {
+                                condition.CollapseSingleObjectMatchingProperty = condition.CollectionInnerType?.GetProperty(condition.CollapseSingleItemMatchingName);
+                            }
+
                         }
                         condition.IsSimpleType = IsSimple(prop.PropertyType);
                         condition.Property = prop;
@@ -301,6 +379,8 @@ namespace ApiDocs.Validation.Utility
             public bool IsSimpleType { get; set; }
             public string CollectionIdentifierPropertyName { get; internal set; }
             public PropertyInfo CollectionIdentifierProperty { get; internal set; }
+            public string CollapseSingleItemMatchingName { get; internal set; }
+            public PropertyInfo CollapseSingleObjectMatchingProperty { get; internal set; }
         }
 
         private static object CreateInstanceOfType(Type type)
@@ -324,9 +404,9 @@ namespace ApiDocs.Validation.Utility
             return result;
         }
 
-        private static void VerifyNodesAreOfType(IEnumerable<object> nodesToMerge, Type type)
+        private static void VerifyNodesAreOfType(IEnumerable<NodeToMerge> nodesToMerge, Type type)
         {
-            if (nodesToMerge.Any(x => x != null && x.GetType() != type))
+            if (nodesToMerge.Any(x => x.Node != null && x.Node.GetType() != type))
             {
                 throw new ObjectGraphMergerException("Nodes to merge must all be the same class type.");
             }
@@ -396,6 +476,13 @@ namespace ApiDocs.Validation.Utility
     public class MergableAttribute : Attribute
     {
         public string CollectionIdentifier { get; set; }
+
+        /// <summary>
+        /// Setting this property allows use to merge a single instance of a class in two different EDMX sources into a single object, if the property value
+        /// pointed at here is the same, even if the collection identifier is different.
+        /// e.g. we can collapse an action with the same Name property even if the parameters are different (which are embedded in CollectionIdentifier)
+        /// </summary>
+        public string CollapseSingleItemMatchingProperty { get; set; }
 
     }
 
