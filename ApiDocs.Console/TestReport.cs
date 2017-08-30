@@ -29,13 +29,13 @@ namespace ApiDocs.ConsoleApp
     using System.Collections.Generic;
     using System.Text;
     using System.Threading.Tasks;
-    using ApiDocs.ConsoleApp.AppVeyor;
+    using ApiDocs.ConsoleApp.StatusReporter;
     using ApiDocs.Validation;
 
     public static class TestReport
     {
         private const string TestFrameworkName = "apidocs";
-        private static BuildWorkerApi BuildWorkerApi { get { return Program.BuildWorker; } }
+        private static IReportingAgent ReportingAgent { get { return Program.ReportingAgent; } }
         private static readonly Dictionary<string, long> TestStartTimes = new Dictionary<string, long>();
         private static readonly Dictionary<string, string> TestStartFilename = new Dictionary<string, string>();
 
@@ -101,13 +101,13 @@ namespace ApiDocs.ConsoleApp
                 FancyConsole.WriteLine(" duration: {0}", duration);
             }
 
-            await BuildWorkerApi.RecordTestAsync(testName, TestFrameworkName, outcome: outcome, durationInMilliseconds: (long)duration.TotalMilliseconds, errorMessage: message, filename: filename, stdOut: stdOut);
+            await ReportingAgent.RecordTestAsync(testName, TestFrameworkName, outcome: outcome, durationInMilliseconds: (long)duration.TotalMilliseconds, errorMessage: message, filename: filename, stdOut: stdOut);
         }
 
 
         internal static async Task LogMessageAsync(string message, MessageCategory category = MessageCategory.Information, string details = null)
         {
-            await BuildWorkerApi.AddMessageAsync(message, category, details);
+            await ReportingAgent.AddMessageAsync(message, category, details);
         }
 
         internal static async Task LogMethodTestResults(Validation.MethodDefinition method, IServiceAccount account, Validation.ValidationResults results)
@@ -148,13 +148,13 @@ namespace ApiDocs.ConsoleApp
                 string filename = method.SourceFile.DisplayName;
                 TestOutcome outcome = ToTestOutcome(scenario.Outcome);
 
-                await BuildWorkerApi.RecordTestAsync(
+                await ReportingAgent.RecordTestAsync(
                         testName,
                         TestFrameworkName,
-                        outcome: outcome,
-                        durationInMilliseconds: (long)scenario.Duration.TotalMilliseconds,
+                        filename,
+                        outcome,
+                        scenario.Duration,
                         errorMessage: message ?? scenario.Outcome.ToString(),
-                        filename: filename,
                         stdOut: stdout.ToString());
             }
         }

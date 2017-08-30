@@ -30,7 +30,7 @@ namespace ApiDocs.ConsoleApp
     using System.Diagnostics;
     using System.Linq;
     using System.Threading.Tasks;
-    using AppVeyor;
+    using StatusReporter;
     using ApiDocs.DocumentationGeneration;
     using Publishing.Html;
     using Publishing.Swagger;
@@ -51,7 +51,7 @@ namespace ApiDocs.ConsoleApp
         private const int ExitCodeSuccess = 0;
         private const int ParallelTaskCount = 5;
 
-        public static readonly BuildWorkerApi BuildWorker = new BuildWorkerApi();
+        public static IReportingAgent ReportingAgent { get; private set; }
         public static AppConfigFile CurrentConfiguration { get; private set; }
 
         // Set to true to disable returning an error code when the app exits.
@@ -66,8 +66,9 @@ namespace ApiDocs.ConsoleApp
             FancyConsole.WriteLine(ConsoleColor.Green, "APIDocs tool, version {0}", System.Reflection.Assembly.GetExecutingAssembly().GetName().Version);
             FancyConsole.WriteLine();
             if (args.Length > 0)
+            {
                 FancyConsole.WriteLine("Command line: " + args.ComponentsJoinedByString(" "));
-
+            }
 
             string verbName = null;
             BaseOptions verbOptions = null;
@@ -111,7 +112,17 @@ namespace ApiDocs.ConsoleApp
         {
             if (!string.IsNullOrEmpty(verbOptions.AppVeyorServiceUrl))
             {
-                BuildWorker.UrlEndPoint = new Uri(verbOptions.AppVeyorServiceUrl);
+                FancyConsole.WriteLine("Using AppVeyor Build Worker for tracking.");
+                ReportingAgent = new AppVeyorBuildWorkerApi(new Uri(verbOptions.AppVeyorServiceUrl));
+            }
+            else if (!string.IsNullOrEmpty(verbOptions.NUnitTestResultFilename))
+            {
+                FancyConsole.WriteLine($"Using NUnit3 test results file for tracking: {verbOptions.NUnitTestResultFilename}");
+                ReportingAgent = new NUnit3TestResultsWriter(verbOptions.NUnitTestResultFilename);
+            }
+            else
+            {
+                ReportingAgent = new NullStatusReporter();
             }
 
             var commandOptions = verbOptions as DocSetOptions;
@@ -294,14 +305,14 @@ namespace ApiDocs.ConsoleApp
         {
             var message = string.Format(format, variables);
             FancyConsole.WriteLine(FancyConsole.ConsoleWarningColor, message);
-            Task.Run(() => BuildWorker.AddMessageAsync(message, MessageCategory.Warning));
+            Task.Run(() => ReportingAgent.AddMessageAsync(message, MessageCategory.Warning));
         }
 
         public static void RecordError(string format, params object[] variables)
         {
             var message = string.Format(format, variables);
             FancyConsole.WriteLine(FancyConsole.ConsoleErrorColor, message);
-            Task.Run(() => BuildWorker.AddMessageAsync(message, MessageCategory.Error));
+            Task.Run(() => ReportingAgent.AddMessageAsync(message, MessageCategory.Error));
         }
 
         /// <summary>

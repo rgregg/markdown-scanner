@@ -23,7 +23,7 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-namespace ApiDocs.ConsoleApp.AppVeyor
+namespace ApiDocs.ConsoleApp.StatusReporter
 {
     using System;
     using System.IO;
@@ -32,23 +32,23 @@ namespace ApiDocs.ConsoleApp.AppVeyor
     using Newtonsoft.Json;
     using Newtonsoft.Json.Converters;
 
-    public class BuildWorkerApi
+    public class AppVeyorBuildWorkerApi : IReportingAgent
     {
         public Uri UrlEndPoint { get; set; }
         private static readonly JsonSerializerSettings CachedJsonSettings;
 
-        static BuildWorkerApi()
+        static AppVeyorBuildWorkerApi()
         {
             CachedJsonSettings =  new JsonSerializerSettings { DefaultValueHandling = DefaultValueHandling.Ignore, NullValueHandling = NullValueHandling.Ignore };
             CachedJsonSettings.Converters.Add(new StringEnumConverter { CamelCaseText = true });
         }
 
-        public BuildWorkerApi(Uri apiUrl)
+        public AppVeyorBuildWorkerApi(Uri apiUrl)
         {
             this.UrlEndPoint = apiUrl;
         }
 
-        public BuildWorkerApi()
+        public AppVeyorBuildWorkerApi()
         {
             this.UrlEndPoint = null;
         }
@@ -66,45 +66,6 @@ namespace ApiDocs.ConsoleApp.AppVeyor
             }
         }
 
-        public async Task AddCompilationMessageAsync(string message, MessageCategory category = MessageCategory.Information, string details = null, string filename = null, int line = 0, int column = 0, string projectName = null, string projectFileName = null)
-        {
-            try
-            {
-                var body = new
-                {
-                    message = message,
-                    category = category,
-                    details = details,
-                    fileName = filename,
-                    line = line,
-                    column = column,
-                    projectName = projectName,
-                    projectFileName = projectFileName
-                };
-                await this.PostToApiAsync("api/build/compilationmessages", body);
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        public async Task AddEnvironmentVariableAsync(string name, string value)
-        {
-            try
-            {
-                var body = new
-                {
-                    name = name,
-                    value = value
-                };
-                await this.PostToApiAsync("api/build/variables", body);
-            }
-            catch
-            {
-                // ignored
-            }
-        }
 
         public async Task RecordTestAsync(string testName, string testFramework = null, string filename = null, TestOutcome outcome = TestOutcome.None, long durationInMilliseconds = 0, string errorMessage = null, string errorStackTrace = null, string stdOut = null, string stdErr = null)
         {
@@ -123,26 +84,6 @@ namespace ApiDocs.ConsoleApp.AppVeyor
                     StdErr = stdErr
                 };
                 await this.PostToApiAsync("api/tests", body);
-            }
-            catch
-            {
-                // ignored
-            }
-        }
-
-        public async Task PushArtifactAsync(string path, string fileName, string name, ArtifactType type)
-        {
-            try
-            {
-
-                var body = new
-                {
-                    path = path,
-                    fileName = fileName,
-                    name = name,
-                    type = type
-                };
-                await this.PostToApiAsync("api/artifacts", body);
             }
             catch
             {
@@ -199,30 +140,5 @@ namespace ApiDocs.ConsoleApp.AppVeyor
     }
 
 
-    public enum MessageCategory
-    {
-        Information,
-        Warning,
-        Error
-    }
 
-    public enum TestOutcome
-    {
-        None,
-        Running,
-        Passed,
-        Failed,
-        Ignored,
-        Skipped,
-        Inconclusive,
-        NotFound,
-        Cancelled,
-        NotRunnable
-    }
-
-    public enum ArtifactType
-    {
-        Auto,
-        WebDeployPackage
-    }
 }

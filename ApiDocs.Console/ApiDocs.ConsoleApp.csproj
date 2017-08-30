@@ -72,7 +72,9 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AppVeyor\BuildWorkerApi.cs" />
+    <Compile Include="StatusReporter\AppVeyorBuildWorkerApi.cs" />
+    <Compile Include="StatusReporter\NullStatusReporter.cs" />
+    <Compile Include="StatusReporter\IReportingAgent.cs" />
     <Compile Include="Auth\BasicAccount.cs" />
     <Compile Include="Auth\OAuthAccount.cs" />
     <Compile Include="Auth\OAuthAccountException.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="GitHelper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="StatusReporter\NUnit3TestResultsWriter.cs" />
     <Compile Include="TestReport.cs" />
     <Compile Include="AppConfigFile.cs" />
     <Compile Include="WildcardExtensions.cs" />

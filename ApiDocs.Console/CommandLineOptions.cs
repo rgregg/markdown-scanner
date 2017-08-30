@@ -102,6 +102,9 @@ namespace ApiDocs.ConsoleApp
         [Option("appveyor-url", HelpText="Specify the AppVeyor Build Worker API URL for output integration")]
         public string AppVeyorServiceUrl { get; set; }
 
+        [Option("nunit-results", HelpText="Specify the path and filename for the NUnit 3 text XML results file, if required.")]
+        public string NUnitTestResultFilename { get; set; }
+
         [Option("ignore-errors", HelpText="Prevent errors from generating a non-zero return code.")]
         public bool IgnoreErrors { get; set; }
 
