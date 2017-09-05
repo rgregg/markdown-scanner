@@ -233,7 +233,7 @@ namespace ApiDocs.Validation.OData.Transformation
 
     public class PropertyModification : CommonModificationProperties
     {
-        [JsonProperty("ags:CreateVirutalNavigationProperty")]
+        [JsonProperty("ags:CreateVirtualNavigationProperty")]
         public bool? CreateVirtualNavigationProperty { get; set; }
 
         [JsonProperty("ags:VirtualNavigationPropertyName")]
