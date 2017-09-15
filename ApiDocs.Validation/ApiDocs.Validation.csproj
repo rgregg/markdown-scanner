@@ -103,6 +103,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
     <Compile Include="ScenarioExtensionMethods.cs" />
+    <Compile Include="SingleOrArrayConverter.cs" />
     <Compile Include="TableSpec\TableDefinition.cs" />
     <Compile Include="TableSpec\TableParserConfig.cs" />
     <Compile Include="Tags\TagProcessor.cs" />

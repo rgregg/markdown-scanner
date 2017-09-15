@@ -616,7 +616,7 @@ namespace ApiDocs.ConsoleApp
                     if (example.Language != CodeLanguage.Json)
                         continue;
 
-                    var testName = string.Format("check-example: {0}", example.Metadata.MethodName, example.Metadata.ResourceType);
+                    var testName = string.Format("check-example: {0}", example.Metadata.MethodName?.FirstOrDefault(), example.Metadata.ResourceType);
                     TestReport.StartTest(testName, doc.DisplayName);
 
                     ValidationError[] errors;
@@ -650,7 +650,7 @@ namespace ApiDocs.ConsoleApp
 
                 if (string.IsNullOrEmpty(method.ExpectedResponse))
                 {
-                    await TestReport.FinishTestAsync(testName, TestOutcome.Failed, "Null response where one was expected.", printFailuresOnly: options.PrintFailuresOnly);
+                    await TestReport.FinishTestAsync(testName, TestOutcome.Failed, "No response was paired with this request.", printFailuresOnly: options.PrintFailuresOnly);
                     results.FailureCount++;
                     continue;
                 }
